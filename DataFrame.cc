@@ -4,21 +4,47 @@ DataFrame::DataFrame() {
     Clear();
 }
 DataFrame::~DataFrame() {
-    PrintHeader();
+    // PrintHeader();
+    if (!grawFile_.is_open()) grawFile_.close();
 }
-void DataFrame::ReadHeader(std::ifstream &inFile) {
-    inFile.read((char *)&(this->header_), sizeof(this->header_));
+void DataFrame::OpenGrawFile(const std::string &fileName) {
+    grawFile_.open(fileName.c_str(), std::ios::in | std::ios::binary);
+    if (!grawFile_.is_open()) {
+        std::cerr << "File open error : " << fileName.c_str() << std::endl;
+        exit(-1);
+    }
+    std::cout << "File open: " << fileName.c_str() << std::endl;
 }
-void DataFrame::ReadItem(std::ifstream &inFile) {
+void DataFrame::CloseGrawFile() {
+    grawFile_.close();
+}
+bool DataFrame::Decode() {
+    ReadHeader();
+    if (grawFile_.eof()) {
+        std::cout << "[EOF]" << std::endl;
+        return false;
+    }
+    ReadItem();
+    eventIdx_++;
+    return true;
+}
+void DataFrame::ReadHeader() {
+    grawFile_.read((char *)&(this->header_), sizeof(this->header_));
+}
+void DataFrame::ReadItem() {
     int nItems = GetItems();
     for (int itemIdx = 0; itemIdx < nItems; itemIdx++) {
-        inFile.read((char *)&(this->item_), sizeof(this->item_));
-        int agetIdx = GetAgetIdx();
-        int chanIdx = GetChanIdx();
-        int buckIdx = GetBuckIdx();
-        int sample = GetSample();
-        this->ADC_[agetIdx][chanIdx][buckIdx] = sample;
+        grawFile_.read((char *)&(this->item_), sizeof(this->item_));
+        this->ADC_[GetAgetIdx()][GetChanIdx()][GetBuckIdx()] = GetSample();
     }
+}
+unsigned int DataFrame::GetEventIdx() {
+    return eventIdx_;
+}
+unsigned long long DataFrame::GetEventTime() {
+    return (unsigned long long)(((unsigned long long)this->header_.eventTime[0] << 40) | ((unsigned long long)this->header_.eventTime[1] << 32) |
+                                ((unsigned long long)this->header_.eventTime[2] << 24) | ((unsigned long long)this->header_.eventTime[3] << 16) |
+                                ((unsigned long long)this->header_.eventTime[4] << 8) | ((unsigned long long)this->header_.eventTime[5]));
 }
 int DataFrame::GetAgetIdx() {
     return (this->item_ >> 6) & 0x03;
@@ -41,10 +67,6 @@ int DataFrame::GetSample() {
     sampleLowerBits = (this->item_ >> 24) & 0xff;
     sampleUpperBits = (this->item_ >> 16) & 0x0f;
     return (sampleUpperBits << 8) | sampleLowerBits;
-}
-int DataFrame::GetEventIdx() {
-    return (int)((this->header_.eventIdx[0] << 24) | (this->header_.eventIdx[1] << 16) |
-                 (this->header_.eventIdx[2] << 8) | (this->header_.eventIdx[3]));
 }
 int DataFrame::GetItems() {
     return (int)((this->header_.nItems[0] << 24) | (this->header_.nItems[1] << 16) |
@@ -82,4 +104,29 @@ void DataFrame::PrintHeader() {
     std::cout << "Status : " << (int)this->header_.status << std::endl;
     std::cout << "************************************************" << std::endl;
     std::cout << std::endl;
+}
+bool DataFrame::IsEvenNoise(int agetIdx, int chanIdx) {
+    if (agetIdx == 0) {  // 순서 바뀜
+        if ((chanIdx < 11 || (chanIdx > 22 && chanIdx < 45) || chanIdx > 56) &&
+            chanIdx % 2 == 1) {
+            return true;
+        } else if (((chanIdx > 11 && chanIdx < 22) ||
+                    (chanIdx > 45 && chanIdx < 56)) &&
+                   chanIdx % 2 == 0) {
+            return true;
+        } else {
+            return false;
+        }
+    } else {
+        if ((chanIdx < 11 || (chanIdx > 22 && chanIdx < 45) || chanIdx > 56) &&
+            chanIdx % 2 == 0) {
+            return true;
+        } else if (((chanIdx > 11 && chanIdx < 22) ||
+                    (chanIdx > 45 && chanIdx < 56)) &&
+                   chanIdx % 2 == 1) {
+            return true;
+        } else {
+            return false;
+        }
+    }
 }

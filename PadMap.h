@@ -9,21 +9,19 @@
 
 class PadMap {
 private:
-    int padID_;
-    std::map<std::pair<int, int>, std::vector<int>> mapToID_;
-    std::map<std::pair<int, int>, std::vector<int>> mapToPosition_;
+    std::map<std::pair<int, int>, std::pair<int, int>> padToAgetMap_;
+    std::map<std::pair<int, int>, std::pair<int, int>> agetToPadMap_;
 
 public:
-    PadMap(int padID = 1);
-    void TransformChannelToPad(int &agetID, int &channelID, int &colN, int &rowN);
-    // HoneyComb Pad: 0, Rectangle Pad: 1
-    int GetAgetIdx(int colN, int rowN);
-    int GetChanIdx(int colN, int rowN);
+    PadMap();
+    void TransformChannelToPad(int &agetIdx, int &chanIdx, int &colIdx, int &rowIdx);
+    int GetAgetIdx(int colIdx, int rowIdx);
+    int GetChanIdx(int colIdx, int rowIdx);
     // int GetFPNChannelID(int channelID);
-    int GetColN(int agetID, int channelID);
-    int GetRowN(int agetID, int channelID);
-    float GetX(int colN);
-    float GetY(int colN, int rowN);
+    int GetColIdx(int agetIdx, int chanIdx);
+    int GetRowIdx(int agetIdx, int chanIdx);
+    float GetX(int agetIdx, int chanIdx);
+    float GetY(int agetIdx, int chanIdx);
     void BuildPad(TH2Poly *poly);
 };
 
