@@ -47,7 +47,7 @@ void grawToTree() {
     auto fFit = new TF1("fFit", fitFunc, 1, 512, 4);
     auto cvsSignal = new TCanvas("cvsSignal", "", 700, 700);
     auto cvsPad = new TCanvas("cvsPad", "", 700, 700);
-
+    
     DataFrame frame;
     PadMap pMap;
     pMap.BuildPad(hPolyPad);
@@ -67,7 +67,8 @@ void grawToTree() {
             for (int agetIdx = 0; agetIdx < 4; agetIdx++) {
                 hBgkOddChanAget[agetIdx]->Reset("ICESM");
                 hBgkEvenChanAget[agetIdx]->Reset("ICESM");
-                for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
+		hSignal->Reset();  // Initiation! 
+		for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
                     if (frame.IsFPNChannel(chanIdx)) continue;
                     for (int buckIdx = 1; buckIdx < 512; buckIdx++) {
                         hSignal->SetBinContent(buckIdx, frame.GetADC(agetIdx, chanIdx, buckIdx));
@@ -98,13 +99,18 @@ void grawToTree() {
                         hSignal->SetAxisRange(-100, 1000, "Y");
                         hSignal->Draw();
                         if (maxBin < 450 && maxBin > 50 && maxVal - meanVal > 20) {
-                            fFit->SetParLimits(0, meanVal - 10, meanVal + 10);
+			  fFit->SetParameter(0,2);   // Should set initial parameters for fair fits.  Otherwise, the previous channel result will bias it. 
+			  fFit->SetParameter(1,1000);
+			  fFit->SetParameter(2,1000);
+			  fFit->SetParameter(3,10);
+
+			  fFit->SetParLimits(0, meanVal - 10, meanVal + 10);
                             fFit->SetParLimits(1, 0.001, 0.6);
                             fFit->SetParLimits(2, 0.048, 0.052);
                             fFit->SetParLimits(3, 0, maxBin);
                             fFit->SetParameters(meanVal, maxVal * TMath::Power((0.05 * TMath::E()) / 3., 3) + 0.02, 0.05, maxBin - 50);
                             fFit->SetRange(0, maxBin + 50);
-                            hSignal->Fit("fFit", "RQ");
+                            hSignal->Fit("fFit", "");
                             gStyle->SetOptFit(1111);
                             isSignalCand = true;
                         }
@@ -119,6 +125,10 @@ void grawToTree() {
                         hSignal->SetAxisRange(-100, 1000, "Y");
                         hSignal->Draw();
                         if (maxBin < 450 && maxBin > 50 && maxVal - meanVal > 20) {
+			  fFit->SetParameter(0,2);   // Should set initial parameters for fair fits.  Otherwise, the previous channel result will bias it. 
+			  fFit->SetParameter(1,1000);
+			  fFit->SetParameter(2,1000);
+			  fFit->SetParameter(3,10);
                             fFit->SetParLimits(0, meanVal - 10, meanVal + 10);
                             fFit->SetParLimits(1, 0.001, 0.6);
                             fFit->SetParLimits(2, 0.048, 0.052);
@@ -130,7 +140,7 @@ void grawToTree() {
                             isSignalCand = true;
                         }
                     }
-                    if (isSignalCand) {
+		    if (isSignalCand) {
                         double aa = fFit->GetParameter(1);
                         double bb = fFit->GetParameter(3);
                         double cc = fFit->GetParameter(2);
@@ -140,11 +150,13 @@ void grawToTree() {
                             int yCoor = pMap.GetY(agetIdx, chanIdx);
                             hPolyPad->Fill(xCoor, yCoor, realMaxVal);
                             // hSignal->SetTitle(Form("%lf, %lf, %lf", aa, cc, realMaxVal));
-                            // cvsSignal->Update();
-                            // cvsSignal->SaveAs(Form("./signal/signal_%05d_%d_%d.png", eventIdx, agetIdx, chanIdx));
                         }
+
+			hSignal->Draw();
+			cvsSignal->Update();
+			cvsSignal->SaveAs(Form("./fitResults/signal_%05d_%d_%d.png", eventIdx, agetIdx, chanIdx));
                     }
-                }
+		}
             }
             cvsPad->cd();
             hPolyPad->SetAxisRange(0, 4000, "Z");
