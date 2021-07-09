@@ -32,7 +32,7 @@ double fitFunc(double *x, double *par) {
 }
 bool isEven(int agetIdx, int chanIdx);
 
-void angle() {
+void grawToTree() {
     std::ifstream fList("files.txt");
 
     auto hSignal = new TH1F("hSignal", "", 511, 1, 512);
