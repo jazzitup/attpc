@@ -35,7 +35,7 @@ bool isEven(int agetIdx, int chanIdx);
 void grawToTree() {
 
   bool isDebugMode = true ;   // Save all supplemental figures 
-  bool threshold1 = 600 ; //   If the max ADC is smaller than threshold1, we assume that channel is background channel
+  float threshold1 = 500 ; //   If the max ADC is smaller than threshold1, we assume that channel is background channel
 
     
   std::ifstream fList("files.txt");
@@ -69,10 +69,10 @@ void grawToTree() {
     
     // Histograms for background monitoring:
     int nRelAdcBins= 300;
-    TH2F *BkgProfileOdd = new TH2F("bpo","",511,1,512,nRelAdcBins,0,nRelAdcBins); // 2d histogram for time x ADC 
-    TH2F *BkgProfileEven = new TH2F("bpe","",511,1,512,nRelAdcBins,0,nRelAdcBins);
-    TH2F *BkgProfileOddCorr = new TH2F("bpoc","",511,1,512,nRelAdcBins,0,nRelAdcBins);
-    TH2F *BkgProfileEvenCorr = new TH2F("bpec","",511,1,512,nRelAdcBins,0,nRelAdcBins);
+    TH2F *BkgProfileOdd = new TH2F("BkgProfileOdd",";time bucket; Normalized ADC",511,1,512,nRelAdcBins,0,nRelAdcBins); // 2d histogram for time x ADC 
+    TH2F *BkgProfileEven = new TH2F("BkgProfileEven",";time bucket; Normalized ADC",511,1,512,nRelAdcBins,0,nRelAdcBins);
+    TH2F *BkgProfileOddCorr = new TH2F("BkgProfileOddCorr",";time bucket; Normalized ADC",511,1,512,nRelAdcBins,0,nRelAdcBins);
+    TH2F *BkgProfileEvenCorr = new TH2F("BkgProfileEvenCorr",";time bucket; Normalized ADC",511,1,512,nRelAdcBins,0,nRelAdcBins);
     
     
     DataFrame frame;
@@ -92,10 +92,10 @@ void grawToTree() {
             }
             hPolyPad->ClearBinContents();
 
-	    BkgProfileEvenCorr->Reset();
-            BkgProfileOddCorr->Reset();
             BkgProfileOdd->Reset();
             BkgProfileEven->Reset();
+            BkgProfileOddCorr->Reset();
+	    BkgProfileEvenCorr->Reset();
 	    
 	    for (int agetIdx = 0; agetIdx < 4; agetIdx++) {
 	      for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
@@ -114,24 +114,27 @@ void grawToTree() {
 		bool isBkgChan = false; 
 		int maxBin = hSignalArr[agetIdx][chanIdx]->GetMaximumBin();
 		float maxVal = hSignalArr[agetIdx][chanIdx]->GetBinContent(maxBin);
-		if (  maxVal < threshold1 ) isBkgChan = true; 
+		if (  maxVal < threshold1 ) 
+		  isBkgChan = true; 
 
 		// step2 : Normalize each histogram to fit the region of timebuck 0 ~ 100 ) 
 		if ( isBkgChan == true) {
+
 		  htemp->Reset();
 		  htemp->Add(hSignalArr[agetIdx][chanIdx]);
-		  htemp->Scale( 1./ htemp->Integral(1,100)) ;
+		  htemp->Scale( 5000./ htemp->Integral(1,50)) ;
 		  
 		  for (int buckIdx = 1; buckIdx < 512; buckIdx++) {
-		    if ( isEven(agetIdx, chanIdx) )
-		      BkgProfileEven->Fill ( buckIdx, htemp->GetBinContent(buckIdx) );  
-		    else 
-		      BkgProfileOdd->Fill ( buckIdx, htemp->GetBinContent(buckIdx) );  
-		  }		    
+		    if ( isEven(agetIdx, chanIdx) ) 
+		      BkgProfileEven->Fill ( buckIdx, htemp->GetBinContent(buckIdx) );
+		    else  
+		      BkgProfileOdd->Fill ( buckIdx, htemp->GetBinContent(buckIdx) );
+		    }		    
 
 		}
+
 	      }
-	    }	      
+	    }
 	    
 	    // Check if the hisgroams are well drawn 
 	    if ( isDebugMode) {
@@ -145,7 +148,7 @@ void grawToTree() {
 		}
 	      }
 	      cvsAllChan->SaveAs(Form("./figureDebug/cvsAllChan_%05d.png", eventIdx)); 
-
+	      
 	      cvsBkgChan->cd(1);
 	      BkgProfileEven->Draw("colz");
 	      cvsBkgChan->cd(2);
