@@ -253,15 +253,16 @@ void grawToTree() {
 
 		cvsAllChanBs->cd(agetIdx+1);
                 htemp->Reset();
-		htemp->SetAxisRange(0,2000,"Y");
+		htemp->SetAxisRange(-200,1800,"Y");
 		htemp->Draw();
                 for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
 		  if (frame.IsFPNChannel(chanIdx)) continue;
-                  hSignalBsArr[agetIdx][chanIdx]->Draw("same");
+                  hSignalBsArr[agetIdx][chanIdx]->Draw("same hist");
                 }
               }
-	      cvsAllChanBs->SaveAs(Form("figureDebug/cvsAllChanBs_%05d.png", eventIdx));
-	    }
+	      cvsAllChanBs->Update();
+	      cvsAllChanBs->SaveAs(Form("./figureDebug/cvsAllChanBs_%05d.pdf", eventIdx));
+	    } 
 	
 	    
 	    for (int agetIdx = 0; agetIdx < 4; agetIdx++) {
