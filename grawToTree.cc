@@ -264,24 +264,26 @@ void grawToTree() {
 	      cvsAllChanBs->SaveAs(Form("./figureDebug/cvsAllChanBs_%05d.pdf", eventIdx));
 	    } 
 	
+
+	    // Now, let's fit the pulse shape!
+
 	    
 	    for (int agetIdx = 0; agetIdx < 4; agetIdx++) {
 	      for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
 		if (frame.IsFPNChannel(chanIdx)) continue;
-		for (int buckIdx = 1; buckIdx < 512; buckIdx++) {
-		  hSignal->SetBinContent(buckIdx, frame.GetADC(agetIdx, chanIdx, buckIdx));
-                    }
+
+		hSignal->Reset();
+		hSignal->Add(hSignalBsArr[agetIdx][chanIdx]);  // the histogram to be analyzed;
+
 		bool isSignalCand = false;
-                    cvsSignal->cd();
-                    if (isEven(agetIdx, chanIdx)) {
-                        hSignal->Add(hBgkEvenChanAget[agetIdx], -1.0);
-                        int maxBin = hSignal->GetMaximumBin();
-                        int maxVal = hSignal->GetBinContent(maxBin);
-                        double meanVal = hSignal->Integral(1, 50) / 50.;
-                        // hSignal->SetTitle(Form("%lf", meanVal));
-                        hSignal->SetAxisRange(-100, 1000, "Y");
-                        hSignal->Draw();
-                        if (maxBin < 450 && maxBin > 50 && maxVal - meanVal > 20) {
+		cvsSignal->cd();
+		if (isEven(agetIdx, chanIdx)) {
+		  int maxBin = hSignal->GetMaximumBin();
+		  int maxVal = hSignal->GetBinContent(maxBin);
+		  double meanVal = hSignal->Integral(1, 50) / 50.;
+
+		  hSignal->SetAxisRange(-400, 4000, "Y");
+		  if (maxBin < 450 && maxBin > 50 && maxVal - meanVal > 20) {
 			  fFit->SetParameter(0,2);   // Should set initial parameters for fair fits.  Otherwise, the previous channel result will bias it. 
 			  fFit->SetParameter(1,1000);
 			  fFit->SetParameter(2,1000);
