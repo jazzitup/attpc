@@ -35,20 +35,23 @@ bool isEven(int agetIdx, int chanIdx);
 void grawToTree() {
 
   bool isDebugMode = true ;   // Save all supplemental figures 
-  float threshold1 = 500 ; //   If the max ADC is smaller than threshold1, we assume that channel is background channel
+  int threshold1 = 500 ; //   If the max ADC is smaller than threshold1, we assume that channel is background channel
 
     
   std::ifstream fList("files.txt");
   
     auto hSignal = new TH1F("hSignal", "", 511, 1, 512);
     auto htemp = (TH1F*)hSignal->Clone("htemp");  // will be used for temporary histogrmas
-    
     TH1F* hSignalArr[4][68];  // Array for hSignal for all agets and channels
     for (int agetIdx = 0; agetIdx < 4; agetIdx++) {
       for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
 	hSignalArr[agetIdx][chanIdx] = (TH1F*)hSignal->Clone(Form("hSignal_agetId%d_chanId%d",agetIdx,chanIdx));
       }
     }
+
+    TH1F* hBkgTemplateOdd = (TH1F*)hSignal->Clone("hBkgTemplateOdd");
+    TH1F* hBkgTemplateEven = (TH1F*)hSignal->Clone("hBkgTemplateEven");
+	    
     
     TH1F *hBgkOddChanAget[4];
     TH1F *hBgkEvenChanAget[4];
@@ -64,8 +67,8 @@ void grawToTree() {
 
     auto cvsAllChan = new TCanvas("cvsAllChan", "", 800, 800);    // Histograms for all channels will be drawn here
     cvsAllChan->Divide(2,2);    // for 4 aget channels
-    auto cvsBkgChan = new TCanvas("cvsBkgChan", "", 800, 400);    // Histograms for all background channels (after normalization) will be drawn here
-    cvsBkgChan->Divide(2,1);    // for odd and even channels
+    auto cvsBkgChan = new TCanvas("cvsBkgChan", "", 800, 800);    // Histograms for all background channels (after normalization) will be drawn here
+    cvsBkgChan->Divide(2,3);    // for odd and even channels
     
     // Histograms for background monitoring:
     int nRelAdcBins= 300;
@@ -96,7 +99,7 @@ void grawToTree() {
             BkgProfileEven->Reset();
             BkgProfileOddCorr->Reset();
 	    BkgProfileEvenCorr->Reset();
-	    
+		    
 	    for (int agetIdx = 0; agetIdx < 4; agetIdx++) {
 	      for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
 		hSignal->Reset();  // Initiation! 
@@ -113,7 +116,7 @@ void grawToTree() {
 		// step1 : Select only background channels 
 		bool isBkgChan = false; 
 		int maxBin = hSignalArr[agetIdx][chanIdx]->GetMaximumBin();
-		float maxVal = hSignalArr[agetIdx][chanIdx]->GetBinContent(maxBin);
+		int maxVal = hSignalArr[agetIdx][chanIdx]->GetBinContent(maxBin);
 		if (  maxVal < threshold1 ) 
 		  isBkgChan = true; 
 
@@ -130,13 +133,65 @@ void grawToTree() {
 		    else  
 		      BkgProfileOdd->Fill ( buckIdx, htemp->GetBinContent(buckIdx) );
 		    }		    
-
 		}
+
+
+		
 
 	      }
 	    }
+	    // Remove the 5 maxs and 5 mins fomr BkgProfileEven and BkgProfileOdd
+	    vector<int> even_vec;
+	    vector<int> odd_vec;
+	    for (int buckIdx = 1; buckIdx < 512; buckIdx++) {
+	      even_vec.clear();
+	      odd_vec.clear();
+	      for ( int adcBin = 1;  adcBin <=nRelAdcBins ; adcBin++) { 
+		for ( int jj = 0 ; jj < BkgProfileEven->GetBinContent ( buckIdx, adcBin ) ;  jj++) {
+		  even_vec.push_back( adcBin ) ;
+		}
+		
+		for ( int jj = 0 ; jj < BkgProfileOdd->GetBinContent ( buckIdx, adcBin ) ;  jj++) {
+		  odd_vec.push_back( adcBin ) ;
+		}
+		
+	      }
 	    
-	    // Check if the hisgroams are well drawn 
+	      // Sort out 
+	      if ( even_vec.size() != 0 ) {
+		std::sort( even_vec.begin(), even_vec.end());
+		for ( int ii=3 ; ii< even_vec.size() -3 ; ii++) {
+		  BkgProfileEvenCorr->Fill ( buckIdx, even_vec.at(ii)); 
+		}
+	      }
+	      else {
+		cout << "Not enough background channels!"  << endl;
+		return ;
+	      }	      
+	      
+	      // Fill the corrected histogram
+	      if ( odd_vec.size() != 0 ) {
+		std::sort( odd_vec.begin(), odd_vec.end() );
+		//	    std::sort( odd_vec.begin(), odd_vec.begin() + odd_vec.size());
+		for ( int ii=3 ; ii< odd_vec.size() -3 ;  ii++) {
+		  BkgProfileOddCorr->Fill (  buckIdx, odd_vec.at(ii)); 
+		}
+	      }
+	      else {
+		cout << "Not enough background channels!"  << endl;
+		return ;
+	      }	      
+	      
+	    }
+
+	    hBkgTemplateOdd->Reset();
+	    hBkgTemplateEven->Reset();
+	    hBkgTemplateOdd->Add( (TH1F*)BkgProfileOddCorr->ProfileX()->ProjectionX());
+	    hBkgTemplateEven->Add( (TH1F*)BkgProfileEvenCorr->ProfileX()->ProjectionX());
+	    
+		
+	    
+	    // Check if the hisgroams are well made
 	    if ( isDebugMode) {
 	      for (int agetIdx = 0; agetIdx < 4; agetIdx++) {
 		cvsAllChan->cd(agetIdx+1);
@@ -153,8 +208,22 @@ void grawToTree() {
 	      BkgProfileEven->Draw("colz");
 	      cvsBkgChan->cd(2);
 	      BkgProfileOdd->Draw("colz");
+
+	      cvsBkgChan->cd(3);
+	      BkgProfileEvenCorr->Draw("colz");
+	      cvsBkgChan->cd(4);
+	      BkgProfileOddCorr->Draw("colz");
+
+	      cvsBkgChan->cd(5);
+	      hBkgTemplateOdd->SetAxisRange(0,200,"Y");
+	      hBkgTemplateOdd->Draw();
+	      cvsBkgChan->cd(6);
+	      hBkgTemplateEven->SetAxisRange(0,200,"Y");
+	      hBkgTemplateEven->Draw();
+
 	      cvsBkgChan->SaveAs(Form("./figureDebug/cvsBkgChan_%05d.png", eventIdx));
-	      
+
+		
 	    }
 	    
 	    
