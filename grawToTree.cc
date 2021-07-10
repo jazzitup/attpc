@@ -33,7 +33,10 @@ double fitFunc(double *x, double *par) {
 bool isEven(int agetIdx, int chanIdx);
 
 void grawToTree() {
-    std::ifstream fList("files.txt");
+
+  bool isDebugMode = true ;   // Save all supplemental figures 
+
+  std::ifstream fList("files.txt");
 
     auto hSignal = new TH1F("hSignal", "", 511, 1, 512);
     TH1F *hBgkOddChanAget[4];
@@ -47,6 +50,16 @@ void grawToTree() {
     auto fFit = new TF1("fFit", fitFunc, 1, 512, 4);
     auto cvsSignal = new TCanvas("cvsSignal", "", 700, 700);
     auto cvsPad = new TCanvas("cvsPad", "", 700, 700);
+
+    // Histograms for background monitoring:
+    int nRelAdcBins= 300;
+    TH2F *BkgProfileOdd = new TH2F("bpo","",512,0,512,nRelAdcBins,0,nRelAdcBins); // 2d histogram for time x ADC 
+    TH2F *BkgProfileEven = new TH2F("bpe","",512,0,512,nRelAdcBins,0,nRelAdcBins);
+    TH2F *BkgProfileOddCorr = new TH2F("bpoc","",512,0,512,nRelAdcBins,0,nRelAdcBins);
+    TH2F *BkgProfileEvenCorr = new TH2F("bpec","",512,0,512,nRelAdcBins,0,nRelAdcBins);
+
+
+
     
     DataFrame frame;
     PadMap pMap;
@@ -80,6 +93,14 @@ void grawToTree() {
                     }
                 }
             }
+
+	    // Reset monitoring histograms before entering the channel loop.
+	    BkgProfileEvenCorr->Reset();
+	    BkgProfileOddCorr->Reset();
+	    BkgProfileOdd->Reset();
+	    BkgProfileEven->Reset();
+	  
+	    
             for (int agetIdx = 0; agetIdx < 4; agetIdx++) {
                 for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
                     if (frame.IsFPNChannel(chanIdx)) continue;
@@ -151,10 +172,12 @@ void grawToTree() {
                             hPolyPad->Fill(xCoor, yCoor, realMaxVal);
                             // hSignal->SetTitle(Form("%lf, %lf, %lf", aa, cc, realMaxVal));
                         }
-
-			hSignal->Draw();
-			cvsSignal->Update();
-			cvsSignal->SaveAs(Form("./fitResults/signal_%05d_%d_%d.png", eventIdx, agetIdx, chanIdx));
+			
+			if ( isDebugMode) { 
+			  hSignal->Draw();
+			  cvsSignal->Update();
+			  cvsSignal->SaveAs(Form("./fitResults/signal_%05d_%d_%d.png", eventIdx, agetIdx, chanIdx));
+			}
                     }
 		}
             }
