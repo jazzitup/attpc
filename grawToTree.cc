@@ -35,10 +35,21 @@ bool isEven(int agetIdx, int chanIdx);
 void grawToTree() {
 
   bool isDebugMode = true ;   // Save all supplemental figures 
+  bool threshold1 = 600 ; //   If the max ADC is smaller than threshold1, we assume that channel is background channel
 
+    
   std::ifstream fList("files.txt");
-
+  
     auto hSignal = new TH1F("hSignal", "", 511, 1, 512);
+    auto htemp = (TH1F*)hSignal->Clone("htemp");  // will be used for temporary histogrmas
+    
+    TH1F* hSignalArr[4][68];  // Array for hSignal for all agets and channels
+    for (int agetIdx = 0; agetIdx < 4; agetIdx++) {
+      for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
+	hSignalArr[agetIdx][chanIdx] = (TH1F*)hSignal->Clone(Form("hSignal_agetId%d_chanId%d",agetIdx,chanIdx));
+      }
+    }
+    
     TH1F *hBgkOddChanAget[4];
     TH1F *hBgkEvenChanAget[4];
     for (int agetIdx = 0; agetIdx < 4; agetIdx++) {
@@ -51,15 +62,18 @@ void grawToTree() {
     auto cvsSignal = new TCanvas("cvsSignal", "", 700, 700);
     auto cvsPad = new TCanvas("cvsPad", "", 700, 700);
 
+    auto cvsAllChan = new TCanvas("cvsAllChan", "", 800, 800);    // Histograms for all channels will be drawn here
+    cvsAllChan->Divide(2,2);    // for 4 aget channels
+    auto cvsBkgChan = new TCanvas("cvsBkgChan", "", 800, 400);    // Histograms for all background channels (after normalization) will be drawn here
+    cvsBkgChan->Divide(2,1);    // for odd and even channels
+    
     // Histograms for background monitoring:
     int nRelAdcBins= 300;
-    TH2F *BkgProfileOdd = new TH2F("bpo","",512,0,512,nRelAdcBins,0,nRelAdcBins); // 2d histogram for time x ADC 
-    TH2F *BkgProfileEven = new TH2F("bpe","",512,0,512,nRelAdcBins,0,nRelAdcBins);
-    TH2F *BkgProfileOddCorr = new TH2F("bpoc","",512,0,512,nRelAdcBins,0,nRelAdcBins);
-    TH2F *BkgProfileEvenCorr = new TH2F("bpec","",512,0,512,nRelAdcBins,0,nRelAdcBins);
-
-
-
+    TH2F *BkgProfileOdd = new TH2F("bpo","",511,1,512,nRelAdcBins,0,nRelAdcBins); // 2d histogram for time x ADC 
+    TH2F *BkgProfileEven = new TH2F("bpe","",511,1,512,nRelAdcBins,0,nRelAdcBins);
+    TH2F *BkgProfileOddCorr = new TH2F("bpoc","",511,1,512,nRelAdcBins,0,nRelAdcBins);
+    TH2F *BkgProfileEvenCorr = new TH2F("bpec","",511,1,512,nRelAdcBins,0,nRelAdcBins);
+    
     
     DataFrame frame;
     PadMap pMap;
@@ -77,43 +91,91 @@ void grawToTree() {
                 std::cout << eventIdx << std::endl;
             }
             hPolyPad->ClearBinContents();
-            for (int agetIdx = 0; agetIdx < 4; agetIdx++) {
-                hBgkOddChanAget[agetIdx]->Reset("ICESM");
-                hBgkEvenChanAget[agetIdx]->Reset("ICESM");
-		hSignal->Reset();  // Initiation! 
-		for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
-                    if (frame.IsFPNChannel(chanIdx)) continue;
-                    for (int buckIdx = 1; buckIdx < 512; buckIdx++) {
-                        hSignal->SetBinContent(buckIdx, frame.GetADC(agetIdx, chanIdx, buckIdx));
-                    }
-                    if (isEven(agetIdx, chanIdx)) {
-                        hBgkEvenChanAget[agetIdx]->Add(hSignal, 1.0 / 32.);
-                    } else {
-                        hBgkOddChanAget[agetIdx]->Add(hSignal, 1.0 / 32.);
-                    }
-                }
-            }
 
-	    // Reset monitoring histograms before entering the channel loop.
 	    BkgProfileEvenCorr->Reset();
-	    BkgProfileOddCorr->Reset();
-	    BkgProfileOdd->Reset();
-	    BkgProfileEven->Reset();
-	  
+            BkgProfileOddCorr->Reset();
+            BkgProfileOdd->Reset();
+            BkgProfileEven->Reset();
 	    
-            for (int agetIdx = 0; agetIdx < 4; agetIdx++) {
-                for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
-                    if (frame.IsFPNChannel(chanIdx)) continue;
-                    for (int buckIdx = 1; buckIdx < 512; buckIdx++) {
-                        hSignal->SetBinContent(buckIdx, frame.GetADC(agetIdx, chanIdx, buckIdx));
+	    for (int agetIdx = 0; agetIdx < 4; agetIdx++) {
+	      for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
+		hSignal->Reset();  // Initiation! 
+		if (frame.IsFPNChannel(chanIdx)) continue;
+		for (int buckIdx = 1; buckIdx < 512; buckIdx++) {
+		  hSignal->SetBinContent(buckIdx, frame.GetADC(agetIdx, chanIdx, buckIdx));
+		}
+		
+		// Background estimation procedure: 
+		// step0 : copy the hSignal into the hSignalarrays
+		hSignalArr[agetIdx][chanIdx]->Reset();
+		hSignalArr[agetIdx][chanIdx]->Add(hSignal);
+
+		// step1 : Select only background channels 
+		bool isBkgChan = false; 
+		int maxBin = hSignalArr[agetIdx][chanIdx]->GetMaximumBin();
+		float maxVal = hSignalArr[agetIdx][chanIdx]->GetBinContent(maxBin);
+		if (  maxVal < threshold1 ) isBkgChan = true; 
+
+		// step2 : Normalize each histogram to fit the region of timebuck 0 ~ 100 ) 
+		if ( isBkgChan == true) {
+		  htemp->Reset();
+		  htemp->Add(hSignalArr[agetIdx][chanIdx]);
+		  htemp->Scale( 1./ htemp->Integral(1,100)) ;
+		  
+		  for (int buckIdx = 1; buckIdx < 512; buckIdx++) {
+		    if ( isEven(agetIdx, chanIdx) )
+		      BkgProfileEven->Fill ( buckIdx, htemp->GetBinContent(buckIdx) );  
+		    else 
+		      BkgProfileOdd->Fill ( buckIdx, htemp->GetBinContent(buckIdx) );  
+		  }		    
+
+		}
+	      }
+	    }	      
+	    
+	    // Check if the hisgroams are well drawn 
+	    if ( isDebugMode) {
+	      for (int agetIdx = 0; agetIdx < 4; agetIdx++) {
+		cvsAllChan->cd(agetIdx+1);
+		htemp->Reset();
+		htemp->SetAxisRange(0,2000,"Y");
+		htemp->Draw();
+		for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
+		  hSignalArr[agetIdx][chanIdx]->Draw("same");
+		}
+	      }
+	      cvsAllChan->SaveAs(Form("./figureDebug/cvsAllChan_%05d.png", eventIdx)); 
+
+	      cvsBkgChan->cd(1);
+	      BkgProfileEven->Draw("colz");
+	      cvsBkgChan->cd(2);
+	      BkgProfileOdd->Draw("colz");
+	      cvsBkgChan->SaveAs(Form("./figureDebug/cvsBkgChan_%05d.png", eventIdx));
+	      
+	    }
+	    
+	    
+	    /*if (isEven(agetIdx, chanIdx)) {
+	      hBgkEvenChanAget[agetIdx]->Add(hSignal, 1.0 / 32.);
+	      } else {
+	      hBgkOddChanAget[agetIdx]->Add(hSignal, 1.0 / 32.);
+	      }
+	    */
+	    
+	    // Reset monitoring histograms before entering the channel loop.
+	    
+	    
+	    for (int agetIdx = 0; agetIdx < 4; agetIdx++) {
+	      for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
+		if (frame.IsFPNChannel(chanIdx)) continue;
+		for (int buckIdx = 1; buckIdx < 512; buckIdx++) {
+		  hSignal->SetBinContent(buckIdx, frame.GetADC(agetIdx, chanIdx, buckIdx));
                     }
-                    bool isSignalCand = false;
+		bool isSignalCand = false;
                     cvsSignal->cd();
                     if (isEven(agetIdx, chanIdx)) {
                         hSignal->Add(hBgkEvenChanAget[agetIdx], -1.0);
-                        int minBin = hSignal->GetMinimumBin();
                         int maxBin = hSignal->GetMaximumBin();
-                        int minVal = hSignal->GetBinContent(minBin);
                         int maxVal = hSignal->GetBinContent(maxBin);
                         double meanVal = hSignal->Integral(1, 50) / 50.;
                         // hSignal->SetTitle(Form("%lf", meanVal));
@@ -131,15 +193,13 @@ void grawToTree() {
                             fFit->SetParLimits(3, 0, maxBin);
                             fFit->SetParameters(meanVal, maxVal * TMath::Power((0.05 * TMath::E()) / 3., 3) + 0.02, 0.05, maxBin - 50);
                             fFit->SetRange(0, maxBin + 50);
-                            hSignal->Fit("fFit", "");
+                            hSignal->Fit("fFit", "Q");
                             gStyle->SetOptFit(1111);
                             isSignalCand = true;
                         }
                     } else {
                         hSignal->Add(hBgkOddChanAget[agetIdx], -1.0);
-                        int minBin = hSignal->GetMinimumBin();
                         int maxBin = hSignal->GetMaximumBin();
-                        int minVal = hSignal->GetBinContent(minBin);
                         int maxVal = hSignal->GetBinContent(maxBin);
                         double meanVal = hSignal->Integral(1, 50) / 50.;
                         hSignal->SetTitle(Form("%lf", meanVal));
@@ -176,7 +236,7 @@ void grawToTree() {
 			if ( isDebugMode) { 
 			  hSignal->Draw();
 			  cvsSignal->Update();
-			  cvsSignal->SaveAs(Form("./fitResults/signal_%05d_%d_%d.png", eventIdx, agetIdx, chanIdx));
+			  //			  cvsSignal->SaveAs(Form("./fitResults/signal_%05d_%d_%d.png", eventIdx, agetIdx, chanIdx));
 			}
                     }
 		}
