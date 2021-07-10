@@ -43,9 +43,11 @@ void grawToTree() {
     auto hSignal = new TH1F("hSignal", "", 511, 1, 512);
     auto htemp = (TH1F*)hSignal->Clone("htemp");  // will be used for temporary histogrmas
     TH1F* hSignalArr[4][68];  // Array for hSignal for all agets and channels
+    TH1F* hSignalBsArr[4][68];  // Array for hSignal for all agets and channels after background subtraction (BS)
     for (int agetIdx = 0; agetIdx < 4; agetIdx++) {
       for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
 	hSignalArr[agetIdx][chanIdx] = (TH1F*)hSignal->Clone(Form("hSignal_agetId%d_chanId%d",agetIdx,chanIdx));
+	hSignalBsArr[agetIdx][chanIdx] = (TH1F*)hSignal->Clone(Form("hSignalBs_agetId%d_chanId%d",agetIdx,chanIdx));
       }
     }
 
@@ -69,6 +71,9 @@ void grawToTree() {
     cvsAllChan->Divide(2,2);    // for 4 aget channels
     auto cvsBkgChan = new TCanvas("cvsBkgChan", "", 800, 800);    // Histograms for all background channels (after normalization) will be drawn here
     cvsBkgChan->Divide(2,3);    // for odd and even channels
+    auto cvsAllChanBs = new TCanvas("cvsAllChanBs", "", 800, 800);    // Histograms for all channels after background subtraction (BS)
+    cvsAllChanBs->Divide(2,2);    // for 4 aget channels
+
     
     // Histograms for background monitoring:
     int nRelAdcBins= 300;
@@ -199,6 +204,7 @@ void grawToTree() {
 		htemp->SetAxisRange(0,2000,"Y");
 		htemp->Draw();
 		for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
+		  if (frame.IsFPNChannel(chanIdx)) continue;
 		  hSignalArr[agetIdx][chanIdx]->Draw("same");
 		}
 	      }
@@ -222,20 +228,41 @@ void grawToTree() {
 	      hBkgTemplateEven->Draw();
 
 	      cvsBkgChan->SaveAs(Form("./figureDebug/cvsBkgChan_%05d.png", eventIdx));
-
-		
+	      
+	      
 	    }
 	    
-	    
-	    /*if (isEven(agetIdx, chanIdx)) {
-	      hBgkEvenChanAget[agetIdx]->Add(hSignal, 1.0 / 32.);
-	      } else {
-	      hBgkOddChanAget[agetIdx]->Add(hSignal, 1.0 / 32.);
+
+	    // After all, let's subtract the background
+	    for (int agetIdx = 0; agetIdx < 4; agetIdx++) {
+	      for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
+		if (frame.IsFPNChannel(chanIdx)) continue;
+		hSignalBsArr[agetIdx][chanIdx]->Reset();
+		hSignalBsArr[agetIdx][chanIdx]->Add(hSignalArr[agetIdx][chanIdx]);
+		TH1F* hTheBkg;
+		if (isEven(agetIdx, chanIdx))    hTheBkg = (TH1F*)hBkgTemplateEven->Clone("hTheBkg"); 
+		else    		         hTheBkg = (TH1F*)hBkgTemplateOdd->Clone("hTheBkg"); 
+		// Scale the background to fit the side band tome bucket 0 - 50 
+		hTheBkg->Scale(  hSignalArr[agetIdx][chanIdx]->Integral(1,50) / hTheBkg->Integral(1,50) );
+		hSignalBsArr[agetIdx][chanIdx]->Add( hTheBkg, -1);
 	      }
-	    */
-	    
-	    // Reset monitoring histograms before entering the channel loop.
-	    
+	    }
+
+	    if ( isDebugMode) {
+	      for (int agetIdx = 0; agetIdx < 4; agetIdx++) {
+
+		cvsAllChanBs->cd(agetIdx+1);
+                htemp->Reset();
+		htemp->SetAxisRange(0,2000,"Y");
+		htemp->Draw();
+                for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
+		  if (frame.IsFPNChannel(chanIdx)) continue;
+                  hSignalBsArr[agetIdx][chanIdx]->Draw("same");
+                }
+              }
+	      cvsAllChanBs->SaveAs(Form("figureDebug/cvsAllChanBs_%05d.png", eventIdx));
+	    }
+	
 	    
 	    for (int agetIdx = 0; agetIdx < 4; agetIdx++) {
 	      for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
