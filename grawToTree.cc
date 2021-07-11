@@ -43,8 +43,8 @@ void jumSun(double x1=0,double y1=0,double x2=1,double y2=1,int color=1, double 
 
 void grawToTree( int numEvents = -1 ) {  // # of events to be analyzed.  If -1, we analyze everything
 
-  bool isDebugMode = true ;   // Save all supplemental ./figures 
-  bool doSaveFitPerf = true ; // Save all fit performance plots in ./fitResults directory
+  bool isDebugMode = 0 ;   // Save all supplemental ./figures 
+  bool doSaveFitPerf = 0 ; // Save all fit performance plots in ./fitResults directory
   int threshold1 = 500 ; //   If the max ADC is smaller than threshold1, we assume that channel is background channel
 
     
@@ -350,13 +350,13 @@ void grawToTree( int numEvents = -1 ) {  // # of events to be analyzed.  If -1, 
     
 }
 bool isEven(int agetIdx, int chanIdx) {
-    if (agetIdx == 0) {  // 순서 바뀜
+  if (agetIdx == 0) {  // 순서 바뀜
         if ((chanIdx < 11 || (chanIdx > 22 && chanIdx < 45) || chanIdx > 56) && chanIdx % 2 == 1) {
-            return true;
+	  return true;
         } else if (((chanIdx > 11 && chanIdx < 22) || (chanIdx > 45 && chanIdx < 56)) && chanIdx % 2 == 0) {
-            return true;
+	  return true;
         } else {
-            return false;
+	  return false;
         }
     } else {
         if ((chanIdx < 11 || (chanIdx > 22 && chanIdx < 45) || chanIdx > 56) && chanIdx % 2 == 0) {
