@@ -100,6 +100,8 @@ void grawToTree( int numEvents = -1 ) {  // # of events to be analyzed.  If -1, 
     int nhits;
     float xTree[256];  // x = row * 100mm / 8
     float yTree[256];  // y = col * 100mm / 32 
+    int xIdTree[256];  // x = row * 100mm / 8
+    int yIdTree[256];  // y = col * 100mm / 32 
     float timeTree[256];
     float adcTree[256];
 
@@ -107,6 +109,8 @@ void grawToTree( int numEvents = -1 ) {  // # of events to be analyzed.  If -1, 
     treeOut->Branch("nhits", &nhits, "nhits/I");
     treeOut->Branch("x", xTree, "x[nhits]/F");
     treeOut->Branch("y", yTree, "y[nhits]/F");
+    treeOut->Branch("xid", xIdTree, "x[nhits]/I");
+    treeOut->Branch("yid", yIdTree, "y[nhits]/I");
     treeOut->Branch("time", timeTree, "time[nhits]/F");
     treeOut->Branch("adc", adcTree, "adc[nhits]/F");
     
@@ -301,15 +305,20 @@ void grawToTree( int numEvents = -1 ) {  // # of events to be analyzed.  If -1, 
 
 		  float realMaxVal =  fFit->GetMaximum(1,512); // aa * TMath::Power(3. / (cc * TMath::E()), 3);
 		  float timing = fFit->GetParameter(3);
-		  int xCoor = pMap.GetX(agetIdx, chanIdx);
-		  int yCoor = pMap.GetY(agetIdx, chanIdx);
+		  float xCoor = pMap.GetX(agetIdx, chanIdx);
+		  float yCoor = pMap.GetY(agetIdx, chanIdx);
+		  int xId = pMap.GetXId(agetIdx, chanIdx);
+		  int yId = pMap.GetYId(agetIdx, chanIdx);
 		  hPolyPad->Fill(xCoor, yCoor, realMaxVal);
 		  // Now let's prepare the variables for the tree
 		  xTree[nhits] =  pMap.GetX(agetIdx, chanIdx);
 		  yTree[nhits] =  pMap.GetY(agetIdx, chanIdx);
+		  xIdTree[nhits] =  pMap.GetXId(agetIdx, chanIdx);
+		  yIdTree[nhits] =  pMap.GetYId(agetIdx, chanIdx);
 		  adcTree[nhits] = realMaxVal; 
 		  timeTree[nhits] = timing; 
 		  nhits++;
+
 		  
 		  if ( isDebugMode) { 
 		    hSignal->SetStats(0);

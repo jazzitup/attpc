@@ -23,7 +23,7 @@
 
 void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1, we analyze everything
   
-  TFile* fileIn = new TFile("./trees/treeOfHits_1kEvents.root");
+  TFile* fileIn = new TFile("./trees/treeOfHits_50evts.root");
   TTree* t = (TTree*)fileIn->Get("hit");
   int evtId;
   int nhits;

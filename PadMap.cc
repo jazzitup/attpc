@@ -33,6 +33,15 @@ float PadMap::GetX(int agetIdx, int chanIdx) {
 float PadMap::GetY(int agetIdx, int chanIdx) {
     return 12.5 * agetToPadMap_[std::make_pair(agetIdx, chanIdx)].second;
 }
+int PadMap::GetXId(int agetIdx, int chanIdx) {
+    return agetToPadMap_[std::make_pair(agetIdx, chanIdx)].first;
+}
+int PadMap::GetYId(int agetIdx, int chanIdx) {
+    return agetToPadMap_[std::make_pair(agetIdx, chanIdx)].second;
+}
+
+
+
 void PadMap::BuildPad(TH2Poly *poly) {
     // Add the bins
     double x[4], y[4];

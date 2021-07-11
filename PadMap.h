@@ -22,6 +22,8 @@ public:
     int GetRowIdx(int agetIdx, int chanIdx);
     float GetX(int agetIdx, int chanIdx);
     float GetY(int agetIdx, int chanIdx);
+    int  GetXId(int agetIdx, int chanIdx);
+    int GetYId(int agetIdx, int chanIdx);
     void BuildPad(TH2Poly *poly);
 };
 
