@@ -65,17 +65,16 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
   TH1F* hResultCharge = new TH1F("hist_chg"," ; yid ; x_mean",8 , -.5, 7.5);
   TH1F* hResultTime = new TH1F("hist_time"," ; yid ; Timing (#mus)",8 , -.5, 7.5);
 
-  TGraph* gResultCharge ;
-  TGraph* gResultChargeYX ;//  x와 y를 바꾼 것.   피팅할 때는 이것이 더 편함. 
+  TGraph* gResultXY ;
+  TGraph* gResultYX ;//  x와 y를 바꾼 것.   피팅할 때는 이것이 더 편함. 
   TGraph* gResultTime ;
   TGraph* gResultTimeYX ;//  x와 y를 바꾼 것.   피팅할 때는 이것이 더 편함. 
-  TF1 * fLinAdc = new TF1("fLinAdc", "[0]+[1]*x", 0, 100); // as a function of Y
+  TF1 * fLinYX = new TF1("fLinYX", "[0]+[1]*x", 0, 100); // as a function of Y
   TF1 * fLinTime = new TF1("fLinTime", "[0]+[1]*x", 0, 100); // as a function of Y
   
-  auto cvs1 = new TCanvas("cvs1", "", 800, 800);  
-  //  cvs1->Divide(2,2);
   
   int nEvents = t->GetEntries();
+  //  for ( int iev = 450 ; iev <452 ; iev++) {
   for ( int iev = 450 ; iev <nEvents ; iev++) {
     //  for ( int iev = 0 ; iev <nEvents ; iev++) {
     t->GetEntry(iev);
@@ -117,50 +116,60 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
     if ( nClus <3 )
       continue;   // We don't need to fit this!!
   
-    gResultCharge =  new TGraph(nClus,px,py);
-    gResultChargeYX =  new TGraph(nClus,py,px);
+    gResultXY =  new TGraph(nClus,px,py);
+    gResultYX =  new TGraph(nClus,py,px);
     
-    fLinAdc->SetParameters(50,0);
-    gResultChargeYX->Fit(fLinAdc);
+    cout << "gResultYX->GetMean(1) = " << gResultYX->GetMean(1) << endl;
+    cout << "gResultYX->GetMean(2) = " << gResultYX->GetMean(2) << endl;
+    for ( int ii=0 ; ii< gResultYX->GetN() ; ii++) {
+      cout << "ii = "<<ii<<endl;
+      cout << " x = " << gResultYX->GetPointX(ii) << endl;
+      cout << " y = " << gResultYX->GetPointY(ii) << endl;
+    }
+    fLinYX->SetParameters(  0 ,    0);
+    //    fLinYX->SetParLimits(0,1,100);
+    fLinYX->SetParLimits(1,-1,1);
+    gResultYX->Fit(fLinYX, "M R");
 
     gResultTime =  new TGraph(nClus,ptime,py);
     gResultTimeYX =  new TGraph(nClus,py,ptime);
 
     fLinTime->SetParameters(4,0);
-    gResultTimeYX->Fit(fLinAdc);
+    gResultTimeYX->Fit(fLinTime, "M R");
     
-    //fLinAdc
     
     if ( isDebugMode) {
+      TCanvas* cvs1 = new TCanvas("cvs1", "", 800, 800);  
       cvs1->Divide(2,2);
       cvs1->cd(1);
       hTime->Draw("colz");
       cvs1->cd(2);
       hAdc->Draw("colz");
-      gResultCharge->SetMarkerSize(1);
-      gResultCharge->SetMarkerColor(kWhite);
-      gResultCharge->Draw("same p");
+      gResultXY->SetMarkerSize(1);
+      gResultXY->SetMarkerColor(kWhite);
+      gResultXY->Draw("same p");
       cvs1->cd(3);
       //      hResultCharge->SetAxisRange(0,32,"Y");
       //      hResultCharge->Draw("e");
       htemp->Reset();
       htemp->SetXTitle("y(mm)");
       htemp->SetYTitle("Charge");
+      htemp->SetAxisRange(0,100,"Y");
       htemp->DrawCopy();
-      gResultChargeYX->Draw("same p");
+      gResultYX->Draw("same p");
       cvs1->cd(4);
       htemp->Reset();
       htemp->SetYTitle("Time");
       htemp->SetAxisRange(0,10,"Y");
       htemp->DrawCopy();
       gResultTimeYX->Draw("same p");
-      
+
       cvs1->SaveAs(Form("tracking/figure1_%05d.png",evtId));
     }
 
   }
   
-  auto cvs2 = new TCanvas("cvs2", "", 500, 500);
+  TCanvas* cvs2 = new TCanvas("cvs22", "", 500, 500);
   if ( isDebugMode ) {
     timediff->Draw();
   }
@@ -232,7 +241,7 @@ void doCluster( TH2F* hAdc, TH2F* hTime, float seedThr, TH1F* timediff, TH1F* hR
 
       float finalX =  fGaus->GetParameter(1) ;
       if ( nValHit == 1 )
-	finalX = hAdc->GetBinContent ( maxIx+1, iy+1) ;
+	finalX = maxIx;
       //      finalX = meanX;
       
       hResChg->SetBinContent( iy+1, finalX);
