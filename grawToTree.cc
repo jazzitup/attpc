@@ -32,6 +32,15 @@ double fitFunc(double *x, double *par) {
 }
 bool isEven(int agetIdx, int chanIdx);
 
+void jumSun(double x1=0,double y1=0,double x2=1,double y2=1,int color=1, double width=1)
+{
+   TLine* t1 = new TLine(x1,y1,x2,y2);
+   t1->SetLineWidth(width);
+   t1->SetLineStyle(7);
+   t1->SetLineColor(color);
+   t1->Draw();
+}
+
 void grawToTree() {
 
   bool isDebugMode = true ;   // Save all supplemental figures 
@@ -67,12 +76,10 @@ void grawToTree() {
     auto cvsSignal = new TCanvas("cvsSignal", "", 700, 700);
     auto cvsPad = new TCanvas("cvsPad", "", 700, 700);
 
-    auto cvsAllChan = new TCanvas("cvsAllChan", "", 800, 800);    // Histograms for all channels will be drawn here
-    cvsAllChan->Divide(2,2);    // for 4 aget channels
+    auto cvsAllChan = new TCanvas("cvsAllChan", "", 1000, 600);    // Histograms for all channels will be drawn here
+    cvsAllChan->Divide(4,2);    // for 4 aget channels x (Before and After background subtraction) 
     auto cvsBkgChan = new TCanvas("cvsBkgChan", "", 800, 800);    // Histograms for all background channels (after normalization) will be drawn here
     cvsBkgChan->Divide(2,3);    // for odd and even channels
-    auto cvsAllChanBs = new TCanvas("cvsAllChanBs", "", 800, 800);    // Histograms for all channels after background subtraction (BS)
-    cvsAllChanBs->Divide(2,2);    // for 4 aget channels
 
     
     // Histograms for background monitoring:
@@ -104,7 +111,10 @@ void grawToTree() {
             BkgProfileEven->Reset();
             BkgProfileOddCorr->Reset();
 	    BkgProfileEvenCorr->Reset();
-		    
+
+	    int nBkgChanOdd = 0 ; // number of bahckground channels ( maxADC < thredhold1)  in odd channels
+	    int nBkgChanEven = 0 ; // number of bahckground channels ( maxADC < thredhold1)  in even channels
+	    
 	    for (int agetIdx = 0; agetIdx < 4; agetIdx++) {
 	      for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
 		hSignal->Reset();  // Initiation! 
@@ -122,12 +132,13 @@ void grawToTree() {
 		bool isBkgChan = false; 
 		int maxBin = hSignalArr[agetIdx][chanIdx]->GetMaximumBin();
 		int maxVal = hSignalArr[agetIdx][chanIdx]->GetBinContent(maxBin);
-		if (  maxVal < threshold1 ) 
+		if (  maxVal < threshold1 )   {
 		  isBkgChan = true; 
-
+		  if ( isEven(agetIdx, chanIdx) )       nBkgChanEven++;
+		  else                                  nBkgChanOdd++;
+		}
 		// step2 : Normalize each histogram to fit the region of timebuck 0 ~ 100 ) 
 		if ( isBkgChan == true) {
-
 		  htemp->Reset();
 		  htemp->Add(hSignalArr[agetIdx][chanIdx]);
 		  htemp->Scale( 5000./ htemp->Integral(1,50)) ;
@@ -137,14 +148,17 @@ void grawToTree() {
 		      BkgProfileEven->Fill ( buckIdx, htemp->GetBinContent(buckIdx) );
 		    else  
 		      BkgProfileOdd->Fill ( buckIdx, htemp->GetBinContent(buckIdx) );
-		    }		    
+		  }		    
 		}
-
-
 		
-
 	      }
 	    }
+	    
+	    if (  (nBkgChanOdd < 11) || (nBkgChanEven < 11) )  {
+	      cout << "Not enough background channels!! So, we skip this event." << endl;
+	      continue;
+	    }
+	    
 	    // Remove the 5 maxs and 5 mins fomr BkgProfileEven and BkgProfileOdd
 	    vector<int> even_vec;
 	    vector<int> odd_vec;
@@ -155,84 +169,29 @@ void grawToTree() {
 		for ( int jj = 0 ; jj < BkgProfileEven->GetBinContent ( buckIdx, adcBin ) ;  jj++) {
 		  even_vec.push_back( adcBin ) ;
 		}
-		
 		for ( int jj = 0 ; jj < BkgProfileOdd->GetBinContent ( buckIdx, adcBin ) ;  jj++) {
 		  odd_vec.push_back( adcBin ) ;
 		}
-		
 	      }
-	    
-	      // Sort out 
-	      if ( even_vec.size() != 0 ) {
-		std::sort( even_vec.begin(), even_vec.end());
-		for ( int ii=3 ; ii< even_vec.size() -3 ; ii++) {
-		  BkgProfileEvenCorr->Fill ( buckIdx, even_vec.at(ii)); 
-		}
+    
+	      // Trim the highest and lowest 5 channesl 
+	      std::sort( even_vec.begin(), even_vec.end());
+	      for ( int ii=5 ; ii< even_vec.size() -5 ; ii++) {
+		BkgProfileEvenCorr->Fill ( buckIdx, even_vec.at(ii)); 
 	      }
-	      else {
-		cout << "Not enough background channels!"  << endl;
-		return ;
-	      }	      
-	      
-	      // Fill the corrected histogram
-	      if ( odd_vec.size() != 0 ) {
-		std::sort( odd_vec.begin(), odd_vec.end() );
-		//	    std::sort( odd_vec.begin(), odd_vec.begin() + odd_vec.size());
-		for ( int ii=3 ; ii< odd_vec.size() -3 ;  ii++) {
-		  BkgProfileOddCorr->Fill (  buckIdx, odd_vec.at(ii)); 
-		}
+	      std::sort( odd_vec.begin(), odd_vec.end() );
+	      for ( int ii=5 ; ii< odd_vec.size() - 5 ;  ii++) {
+		BkgProfileOddCorr->Fill (  buckIdx, odd_vec.at(ii)); 
 	      }
-	      else {
-		cout << "Not enough background channels!"  << endl;
-		return ;
-	      }	      
-	      
 	    }
-
+	    
 	    hBkgTemplateOdd->Reset();
 	    hBkgTemplateEven->Reset();
 	    hBkgTemplateOdd->Add( (TH1F*)BkgProfileOddCorr->ProfileX()->ProjectionX());
 	    hBkgTemplateEven->Add( (TH1F*)BkgProfileEvenCorr->ProfileX()->ProjectionX());
 	    
-		
 	    
-	    // Check if the hisgroams are well made
-	    if ( isDebugMode) {
-	      for (int agetIdx = 0; agetIdx < 4; agetIdx++) {
-		cvsAllChan->cd(agetIdx+1);
-		htemp->Reset();
-		htemp->SetAxisRange(0,2000,"Y");
-		htemp->Draw();
-		for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
-		  if (frame.IsFPNChannel(chanIdx)) continue;
-		  hSignalArr[agetIdx][chanIdx]->Draw("same");
-		}
-	      }
-	      cvsAllChan->SaveAs(Form("./figureDebug/cvsAllChan_%05d.png", eventIdx)); 
-	      
-	      cvsBkgChan->cd(1);
-	      BkgProfileEven->Draw("colz");
-	      cvsBkgChan->cd(2);
-	      BkgProfileOdd->Draw("colz");
-
-	      cvsBkgChan->cd(3);
-	      BkgProfileEvenCorr->Draw("colz");
-	      cvsBkgChan->cd(4);
-	      BkgProfileOddCorr->Draw("colz");
-
-	      cvsBkgChan->cd(5);
-	      hBkgTemplateOdd->SetAxisRange(0,200,"Y");
-	      hBkgTemplateOdd->Draw();
-	      cvsBkgChan->cd(6);
-	      hBkgTemplateEven->SetAxisRange(0,200,"Y");
-	      hBkgTemplateEven->Draw();
-
-	      cvsBkgChan->SaveAs(Form("./figureDebug/cvsBkgChan_%05d.png", eventIdx));
-	      
-	      
-	    }
 	    
-
 	    // After all, let's subtract the background
 	    for (int agetIdx = 0; agetIdx < 4; agetIdx++) {
 	      for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
@@ -249,21 +208,52 @@ void grawToTree() {
 	    }
 
 	    if ( isDebugMode) {
-	      for (int agetIdx = 0; agetIdx < 4; agetIdx++) {
+	      // Check if the hisgroams are well made
 
-		cvsAllChanBs->cd(agetIdx+1);
+              cvsBkgChan->cd(1);
+              BkgProfileEven->Draw("colz");
+              cvsBkgChan->cd(2);
+              BkgProfileOdd->Draw("colz");
+
+              cvsBkgChan->cd(3);
+              BkgProfileEvenCorr->Draw("colz");
+              cvsBkgChan->cd(4);
+              BkgProfileOddCorr->Draw("colz");
+
+              cvsBkgChan->cd(5);
+              hBkgTemplateEven->SetAxisRange(0,200,"Y");
+	      hBkgTemplateEven->Draw();
+              cvsBkgChan->cd(6);
+              hBkgTemplateOdd->SetAxisRange(0,200,"Y");
+              hBkgTemplateOdd->Draw();
+
+              cvsBkgChan->SaveAs(Form("./figureDebug/cvsBkgChan_%05d.png", eventIdx));
+
+
+              for (int agetIdx = 0; agetIdx < 4; agetIdx++) {
+                cvsAllChan->cd(agetIdx+1);
                 htemp->Reset();
-		htemp->SetAxisRange(-200,1800,"Y");
+                htemp->SetAxisRange(-500,3000,"Y");
+                htemp->DrawCopy();
+                for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
+                  if (frame.IsFPNChannel(chanIdx)) continue;
+                  hSignalArr[agetIdx][chanIdx]->Draw("same");
+		}
+		jumSun(0,0,512,0,2);
+		
+		cvsAllChan->cd(agetIdx+5);
 		htemp->Draw();
                 for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
 		  if (frame.IsFPNChannel(chanIdx)) continue;
                   hSignalBsArr[agetIdx][chanIdx]->Draw("same hist");
                 }
-              }
-	      cvsAllChanBs->Update();
-	      cvsAllChanBs->SaveAs(Form("./figureDebug/cvsAllChanBs_%05d.pdf", eventIdx));
+		jumSun(0,0,512,0,2);
+	      }
+	      cvsAllChan->Update();
+              cvsAllChan->SaveAs(Form("./figureDebug/cvsAllChan_%05d.png", eventIdx));
+	      
 	    } 
-	
+	    
 
 	    // Now, let's fit the pulse shape!
 
