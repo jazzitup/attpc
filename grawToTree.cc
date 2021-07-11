@@ -116,13 +116,13 @@ void grawToTree( int numEvents = -1 ) {  // # of events to be analyzed.  If -1, 
     
     int countEvents = 0 ;  // Count the number of recorded events 
     while ( !fList.eof() )  {
-        std::string fName;
-        std::getline(fList, fName);
-        if (fList.eof()) break;
-        frame.OpenGrawFile(fName.c_str());
-        int eventIdx;
-        while ( frame.Decode() && ((numEvents==-1) || (countEvents<numEvents)) ) {
-            eventIdx = frame.GetEventIdx();
+      std::string fName;
+      std::getline(fList, fName);
+      if (fList.eof()) break;
+      frame.OpenGrawFile(fName.c_str());
+      int eventIdx;
+      while ( frame.Decode() && ((numEvents==-1) || (countEvents<numEvents)) ) {
+	eventIdx = frame.GetEventIdx();
             if (eventIdx % 10 == 0) {
                 std::cout << eventIdx << std::endl;
             }
