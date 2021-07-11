@@ -41,7 +41,7 @@ void jumSun(double x1=0,double y1=0,double x2=1,double y2=1,int color=1, double 
    t1->Draw();
 }
 
-void grawToTree() {
+void grawToTree( int numEvents = -1 ) {  // # of events to be analyzed.  If -1, we analyze everything
 
   bool isDebugMode = true ;   // Save all supplemental ./figures 
   bool doSaveFitPerf = true ; // Save all fit performance plots in ./fitResults directory
@@ -95,17 +95,35 @@ void grawToTree() {
     PadMap pMap;
     pMap.BuildPad(hPolyPad);
 
-    while (!fList.eof()) {
+    TTree* treeOut = new TTree("hit","a Tree with hits"); // output tree
+    int evtId; 
+    int nhits;
+    float xTree[256];  // x = row * 100mm / 8
+    float yTree[256];  // y = col * 100mm / 32 
+    float timeTree[256];
+    float adcTree[256];
+
+    treeOut->Branch("eventId", &evtId, "eventId/I");
+    treeOut->Branch("nhits", &nhits, "nhits/I");
+    treeOut->Branch("x", xTree, "x[nhits]/F");
+    treeOut->Branch("y", yTree, "y[nhits]/F");
+    treeOut->Branch("time", timeTree, "time[nhits]/F");
+    treeOut->Branch("adc", adcTree, "adc[nhits]/F");
+    
+    int countEvents = 0 ;  // Count the number of recorded events 
+    while ( !fList.eof() )  {
         std::string fName;
         std::getline(fList, fName);
         if (fList.eof()) break;
         frame.OpenGrawFile(fName.c_str());
         int eventIdx;
-        while (frame.Decode()) {
+        while ( frame.Decode() && ((numEvents==-1) || (countEvents<numEvents)) ) {
             eventIdx = frame.GetEventIdx();
             if (eventIdx % 10 == 0) {
                 std::cout << eventIdx << std::endl;
             }
+	    evtId = eventIdx;
+	    
             hPolyPad->ClearBinContents();
 
             BkgProfileOdd->Reset();
@@ -258,11 +276,11 @@ void grawToTree() {
 
 	    // Now, let's fit the pulse shape!
 
-	    
+	    nhits = 0;
 	    for (int agetIdx = 0; agetIdx < 4; agetIdx++) {
 	      for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
 		if (frame.IsFPNChannel(chanIdx)) continue;
-
+		
 		hSignal->Reset();
 		hSignal->Add(hSignalBsArr[agetIdx][chanIdx]);  // the histogram to be analyzed;
 
@@ -274,22 +292,24 @@ void grawToTree() {
 		
 		hSignal->SetAxisRange(-400, 4000, "Y");
 		if (maxBin < 450 && maxBin > 50 && maxVal > 20) {
+		  isSignalCand = true;
 		  // Should set initial parameters for fair fits.  Otherwise, the previous channel result will bias it. 
 		  fFit->SetParameters(meanVal, maxVal * TMath::Power((0.05 * TMath::E()) / 3., 3) + 0.02, 0.05, maxBin - 50);
 		  //		  fFit->SetRange( max(maxBin-100,0) , maxBin + 100);
 		  hSignal->Fit("fFit", "Q");
 		  gStyle->SetOptFit(1111);
-		  isSignalCand = true;
-		}
-		
-		if (isSignalCand) {
 
 		  float realMaxVal =  fFit->GetMaximum(1,512); // aa * TMath::Power(3. / (cc * TMath::E()), 3);
 		  float timing = fFit->GetParameter(3);
 		  int xCoor = pMap.GetX(agetIdx, chanIdx);
 		  int yCoor = pMap.GetY(agetIdx, chanIdx);
 		  hPolyPad->Fill(xCoor, yCoor, realMaxVal);
-		  // hSignal->SetTitle(Form("%lf, %lf, %lf", aa, cc, realMaxVal));
+		  // Now let's prepare the variables for the tree
+		  xTree[nhits] =  pMap.GetX(agetIdx, chanIdx);
+		  yTree[nhits] =  pMap.GetY(agetIdx, chanIdx);
+		  adcTree[nhits] = realMaxVal; 
+		  timeTree[nhits] = timing; 
+		  nhits++;
 		  
 		  if ( isDebugMode) { 
 		    hSignal->SetStats(0);
@@ -305,21 +325,29 @@ void grawToTree() {
 		    cvsSignal->Update();
 		    if (doSaveFitPerf)
 		      cvsSignal->SaveAs(Form("./fitResults/signal_%05d_%d_%d.png", eventIdx, agetIdx, chanIdx));
-		  }
-		  
-		}
-	      }
-            }
-            cvsPad->cd();
-            hPolyPad->SetAxisRange(0, 4000, "Z");
-            hPolyPad->Draw("colz");
-            hPolyPad->SetStats(0);
-            cvsPad->Update();
-            cvsPad->SetLogz();
-            cvsPad->SaveAs(Form("./track/event%05d.png", eventIdx));
-        }
-        frame.CloseGrawFile();
+		  }  
+		}   
+	       }
+	    } 
+	    
+	    cvsPad->cd();
+	    hPolyPad->SetAxisRange(0, 4000, "Z");
+	    hPolyPad->Draw("colz");
+	    hPolyPad->SetStats(0);
+	    cvsPad->Update();
+	    cvsPad->SetLogz();
+	    cvsPad->SaveAs(Form("./track/event%05d.png", eventIdx));
+
+	    treeOut->Fill(); // fill the tree
+	    countEvents++;
+	}
+	frame.CloseGrawFile();
     }
+    
+    TFile* fout = new TFile("treeOfHits.root","recreate");
+    treeOut->Write();
+    fout->Close();
+    
 }
 bool isEven(int agetIdx, int chanIdx) {
     if (agetIdx == 0) {  // 순서 바뀜
