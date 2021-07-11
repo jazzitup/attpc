@@ -43,7 +43,8 @@ void jumSun(double x1=0,double y1=0,double x2=1,double y2=1,int color=1, double 
 
 void grawToTree() {
 
-  bool isDebugMode = true ;   // Save all supplemental figures 
+  bool isDebugMode = true ;   // Save all supplemental ./figures 
+  bool doSaveFitPerf = true ; // Save all fit performance plots in ./fitResults directory
   int threshold1 = 500 ; //   If the max ADC is smaller than threshold1, we assume that channel is background channel
 
     
@@ -72,7 +73,7 @@ void grawToTree() {
     }
     auto hPolyPad = new TH2Poly("hPolyPad", "", -3.5625, 100.4375, -8.25, 95.75);
     auto hCharge = new TH1F("hCharge", "GEM_V = 310V;Pulse height(Channel);Counts", 150, 300, 1800);
-    auto fFit = new TF1("fFit", fitFunc, 1, 512, 4);
+    auto fFit = new TF1("fFit", fitFunc, 1, 512, 4); // Only signals 
     auto cvsSignal = new TCanvas("cvsSignal", "", 700, 700);
     auto cvsPad = new TCanvas("cvsPad", "", 700, 700);
 
@@ -267,71 +268,47 @@ void grawToTree() {
 
 		bool isSignalCand = false;
 		cvsSignal->cd();
-		if (isEven(agetIdx, chanIdx)) {
-		  int maxBin = hSignal->GetMaximumBin();
-		  int maxVal = hSignal->GetBinContent(maxBin);
-		  double meanVal = hSignal->Integral(1, 50) / 50.;
-
-		  hSignal->SetAxisRange(-400, 4000, "Y");
-		  if (maxBin < 450 && maxBin > 50 && maxVal - meanVal > 20) {
-			  fFit->SetParameter(0,2);   // Should set initial parameters for fair fits.  Otherwise, the previous channel result will bias it. 
-			  fFit->SetParameter(1,1000);
-			  fFit->SetParameter(2,1000);
-			  fFit->SetParameter(3,10);
-
-			  fFit->SetParLimits(0, meanVal - 10, meanVal + 10);
-                            fFit->SetParLimits(1, 0.001, 0.6);
-                            fFit->SetParLimits(2, 0.048, 0.052);
-                            fFit->SetParLimits(3, 0, maxBin);
-                            fFit->SetParameters(meanVal, maxVal * TMath::Power((0.05 * TMath::E()) / 3., 3) + 0.02, 0.05, maxBin - 50);
-                            fFit->SetRange(0, maxBin + 50);
-                            hSignal->Fit("fFit", "Q");
-                            gStyle->SetOptFit(1111);
-                            isSignalCand = true;
-                        }
-                    } else {
-                        hSignal->Add(hBgkOddChanAget[agetIdx], -1.0);
-                        int maxBin = hSignal->GetMaximumBin();
-                        int maxVal = hSignal->GetBinContent(maxBin);
-                        double meanVal = hSignal->Integral(1, 50) / 50.;
-                        hSignal->SetTitle(Form("%lf", meanVal));
-                        hSignal->SetAxisRange(-100, 1000, "Y");
-                        hSignal->Draw();
-                        if (maxBin < 450 && maxBin > 50 && maxVal - meanVal > 20) {
-			  fFit->SetParameter(0,2);   // Should set initial parameters for fair fits.  Otherwise, the previous channel result will bias it. 
-			  fFit->SetParameter(1,1000);
-			  fFit->SetParameter(2,1000);
-			  fFit->SetParameter(3,10);
-                            fFit->SetParLimits(0, meanVal - 10, meanVal + 10);
-                            fFit->SetParLimits(1, 0.001, 0.6);
-                            fFit->SetParLimits(2, 0.048, 0.052);
-                            fFit->SetParLimits(3, 0, maxBin);
-                            fFit->SetParameters(meanVal, maxVal * TMath::Power((0.05 * TMath::E()) / 3., 3) + 0.02, 0.05, maxBin - 50);
-                            fFit->SetRange(0, maxBin + 50);
-                            hSignal->Fit("fFit", "RQ");
-                            gStyle->SetOptFit(1111);
-                            isSignalCand = true;
-                        }
-                    }
-		    if (isSignalCand) {
-                        double aa = fFit->GetParameter(1);
-                        double bb = fFit->GetParameter(3);
-                        double cc = fFit->GetParameter(2);
-                        double realMaxVal = aa * TMath::Power(3. / (cc * TMath::E()), 3);
-                        if (1) {
-                            int xCoor = pMap.GetX(agetIdx, chanIdx);
-                            int yCoor = pMap.GetY(agetIdx, chanIdx);
-                            hPolyPad->Fill(xCoor, yCoor, realMaxVal);
-                            // hSignal->SetTitle(Form("%lf, %lf, %lf", aa, cc, realMaxVal));
-                        }
-			
-			if ( isDebugMode) { 
-			  hSignal->Draw();
-			  cvsSignal->Update();
-			  //			  cvsSignal->SaveAs(Form("./fitResults/signal_%05d_%d_%d.png", eventIdx, agetIdx, chanIdx));
-			}
-                    }
+		int maxBin = hSignal->GetMaximumBin();
+		int maxVal = hSignal->GetBinContent(maxBin);
+		double meanVal = hSignal->Integral(1, 50) / 50.;
+		
+		hSignal->SetAxisRange(-400, 4000, "Y");
+		if (maxBin < 450 && maxBin > 50 && maxVal > 20) {
+		  // Should set initial parameters for fair fits.  Otherwise, the previous channel result will bias it. 
+		  fFit->SetParameters(meanVal, maxVal * TMath::Power((0.05 * TMath::E()) / 3., 3) + 0.02, 0.05, maxBin - 50);
+		  //		  fFit->SetRange( max(maxBin-100,0) , maxBin + 100);
+		  hSignal->Fit("fFit", "Q");
+		  gStyle->SetOptFit(1111);
+		  isSignalCand = true;
 		}
+		
+		if (isSignalCand) {
+
+		  float realMaxVal =  fFit->GetMaximum(1,512); // aa * TMath::Power(3. / (cc * TMath::E()), 3);
+		  float timing = fFit->GetParameter(3);
+		  int xCoor = pMap.GetX(agetIdx, chanIdx);
+		  int yCoor = pMap.GetY(agetIdx, chanIdx);
+		  hPolyPad->Fill(xCoor, yCoor, realMaxVal);
+		  // hSignal->SetTitle(Form("%lf, %lf, %lf", aa, cc, realMaxVal));
+		  
+		  if ( isDebugMode) { 
+		    hSignal->SetStats(0);
+		    hSignal->Draw();
+		    TLegend *l1=new TLegend(0.15,0.7,0.4,0.85,NULL);
+		    l1->SetHeader("Fit result");
+		    l1->SetBorderSize(0);
+		    l1->SetLineColor(1);
+		    l1->SetLineStyle(1);
+		    l1->AddEntry("", Form("Amplitude = %.f",(float)realMaxVal),"");
+		    l1->AddEntry("", Form("Timing = %.1f", timing),"");
+		    l1->Draw();
+		    cvsSignal->Update();
+		    if (doSaveFitPerf)
+		      cvsSignal->SaveAs(Form("./fitResults/signal_%05d_%d_%d.png", eventIdx, agetIdx, chanIdx));
+		  }
+		  
+		}
+	      }
             }
             cvsPad->cd();
             hPolyPad->SetAxisRange(0, 4000, "Z");
