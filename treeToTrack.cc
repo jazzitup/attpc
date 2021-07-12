@@ -23,8 +23,8 @@
 
 void doCluster( TH2F* hAdc, TH2F* hTime, float seedThr, TH1F* timediff, TH1F* hResChg, TH1F* hResTime);
   
-//bool isDebugMode = true ;
-bool isDebugMode = false ;
+bool isDebugMode = true ;
+//bool isDebugMode = false ;
 
 float dtCut = 0.25;
 
@@ -33,7 +33,7 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
 
   float seedThr = 100;
   float  vDrift = 48 ; // in mm/microsecond  <= This must be updated! 
-  TFile* fileIn = new TFile("./trees/treeOfHits_500evts.root");
+  TFile* fileIn = new TFile("./trees/treeOfHits_50evts.root");
   TTree* t = (TTree*)fileIn->Get("hit");
   int evtId;
   int nhits;

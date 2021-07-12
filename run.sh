@@ -5,3 +5,6 @@ root -l -b <<-EOF
 .q
 EOF
 
+#examle :
+#   . run.sh 100  : 100 events 
+#   . run.sh -1   : all events 
