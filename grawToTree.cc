@@ -43,8 +43,8 @@ void jumSun(double x1=0,double y1=0,double x2=1,double y2=1,int color=1, double 
 
 void grawToTree( int numEvents = -1 ) {  // # of events to be analyzed.  If -1, we analyze everything
 
-  bool isDebugMode = 1 ;   // Save all supplemental ./figures 
-  bool doSaveFitPerf = 1 ; // Save all fit performance plots in ./fitResults directory
+  bool isDebugMode = 0 ;   // Save all supplemental ./figures 
+  bool doSaveFitPerf = 0 ; // Save all fit performance plots in ./fitResults directory
   int threshold1 = 500 ; //   If the max ADC is smaller than threshold1, we assume that channel is background channel
 
     
@@ -210,8 +210,15 @@ void grawToTree( int numEvents = -1 ) {  // # of events to be analyzed.  If -1, 
 	    
 	    hBkgTemplateOdd->Reset();
 	    hBkgTemplateEven->Reset();
-	    hBkgTemplateOdd->Add( (TH1F*)BkgProfileOddCorr->ProfileX()->ProjectionX());
-	    hBkgTemplateEven->Add( (TH1F*)BkgProfileEvenCorr->ProfileX()->ProjectionX());
+	    TH1F* htemp1 = (TH1F*)BkgProfileOddCorr->ProfileX()->ProjectionX();
+	    hBkgTemplateOdd->Add(htemp1);
+	    TH1F* htemp2 = (TH1F*)BkgProfileEvenCorr->ProfileX()->ProjectionX();
+	    hBkgTemplateEven->Add( htemp2);
+	    delete htemp1;
+	    delete htemp2;
+	      
+	    //	    hBkgTemplateOdd->Add( (TH1F*)BkgProfileOddCorr->ProfileX()->ProjectionX());
+	    //	    hBkgTemplateEven->Add( (TH1F*)BkgProfileEvenCorr->ProfileX()->ProjectionX());
 	    
 	    
 	    
@@ -227,6 +234,8 @@ void grawToTree( int numEvents = -1 ) {  // # of events to be analyzed.  If -1, 
 		// Scale the background to fit the side band tome bucket 0 - 50 
 		hTheBkg->Scale(  hSignalArr[agetIdx][chanIdx]->Integral(1,50) / hTheBkg->Integral(1,50) );
 		hSignalBsArr[agetIdx][chanIdx]->Add( hTheBkg, -1);
+		delete hTheBkg;
+		
 	      }
 	    }
 
