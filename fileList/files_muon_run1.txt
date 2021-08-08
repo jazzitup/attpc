@@ -1,0 +1,6 @@
+/home/public/muon/run01/CoBo_2021-07-09T16h43m47.199s_0000.graw
+/home/public/muon/run01/CoBo_2021-07-09T16h43m47.199s_0001.graw
+/home/public/muon/run01/CoBo_2021-07-09T16h43m47.199s_0002.graw
+/home/public/muon/run01/CoBo_2021-07-09T16h43m47.199s_0003.graw
+/home/public/muon/run01/CoBo_2021-07-09T16h43m47.199s_0004.graw
+/home/public/muon/run01/CoBo_2021-07-09T16h43m47.199s_0005.graw

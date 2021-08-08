@@ -41,19 +41,19 @@ void jumSun(double x1=0,double y1=0,double x2=1,double y2=1,int color=1, double 
    t1->Draw();
 }
 
-void grawToTree( int numEvents = -1 ) {  // # of events to be analyzed.  If -1, we analyze everything
+void grawToTree( int numEvents = -1, int runNumber = 1 ) {  // # of events to be analyzed.  If -1, we analyze everything
 
   bool isDebugMode = 0 ;   // Save all supplemental ./figures 
   bool doSaveFitPerf = 0 ; // Save all fit performance plots in ./fitResults directory
   int threshold1 = 500 ; //   If the max ADC is smaller than threshold1, we assume that channel is background channel
 
-    
-  std::ifstream fList("files.txt");
   
-    auto hSignal = new TH1F("hSignal", "", 511, 1, 512);
-    auto htemp = (TH1F*)hSignal->Clone("htemp");  // will be used for temporary histogrmas
-    TH1F* hSignalArr[4][68];  // Array for hSignal for all agets and channels
-    TH1F* hSignalBsArr[4][68];  // Array for hSignal for all agets and channels after background subtraction (BS)
+  std::ifstream fList(Form("fileList/files_muon_run%d.txt",runNumber)); // run 1 files 
+  
+  auto hSignal = new TH1F("hSignal", "", 511, 1, 512);
+  auto htemp = (TH1F*)hSignal->Clone("htemp");  // will be used for temporary histogrmas
+  TH1F* hSignalArr[4][68];  // Array for hSignal for all agets and channels
+  TH1F* hSignalBsArr[4][68];  // Array for hSignal for all agets and channels after background subtraction (BS)
     for (int agetIdx = 0; agetIdx < 4; agetIdx++) {
       for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
 	hSignalArr[agetIdx][chanIdx] = (TH1F*)hSignal->Clone(Form("hSignal_agetId%d_chanId%d",agetIdx,chanIdx));
@@ -98,6 +98,7 @@ void grawToTree( int numEvents = -1 ) {  // # of events to be analyzed.  If -1, 
     TTree* treeOut = new TTree("hit","a Tree with hits"); // output tree
     int evtId; 
     int nhits;
+    double evtTime;  
     float xTree[256];  // x = row * 100mm / 8
     float yTree[256];  // y = col * 100mm / 32 
     int xIdTree[256]; 
@@ -107,6 +108,7 @@ void grawToTree( int numEvents = -1 ) {  // # of events to be analyzed.  If -1, 
 
     treeOut->Branch("eventId", &evtId, "eventId/I");
     treeOut->Branch("nhits", &nhits, "nhits/I");
+    treeOut->Branch("evtTime", &evtTime, "evtTime/D");
     treeOut->Branch("x", xTree, "x[nhits]/F");
     treeOut->Branch("y", yTree, "y[nhits]/F");
     treeOut->Branch("xid", xIdTree, "x[nhits]/I");
@@ -115,6 +117,9 @@ void grawToTree( int numEvents = -1 ) {  // # of events to be analyzed.  If -1, 
     treeOut->Branch("adc", adcTree, "adc[nhits]/F");
     
     int countEvents = 0 ;  // Count the number of recorded events 
+
+    double prevEvtTime = -100;  // for the empty event cut;
+    double emptyEvtTimeCut = 0.03;
     while ( !fList.eof() )  {
       std::string fName;
       std::getline(fList, fName);
@@ -122,16 +127,27 @@ void grawToTree( int numEvents = -1 ) {  // # of events to be analyzed.  If -1, 
       frame.OpenGrawFile(fName.c_str());
       int eventIdx;
       while ( frame.Decode() && ((numEvents==-1) || (countEvents<numEvents)) ) {
-	eventIdx = frame.GetEventIdx();
-            if (eventIdx % 10 == 0) {
-                std::cout << eventIdx << std::endl;
-            }
-	    evtId = eventIdx;
-	    
-            hPolyPad->ClearBinContents();
 
-            BkgProfileOdd->Reset();
-            BkgProfileEven->Reset();
+	// Empty event cut /////////////////////////////////
+	evtTime =  frame.GetEventTime() * 1e-8; // in second
+	//	cout << " prev = " << prevEvtTime << endl;
+	//	cout << " now = " << evtTime << endl;
+	if  ( evtTime - prevEvtTime < emptyEvtTimeCut )
+	  continue;
+	prevEvtTime = evtTime ; 
+	////////////////////////////////////////////////////
+	
+	
+	eventIdx = frame.GetEventIdx();
+	if (eventIdx % 10 == 0) {
+	  std::cout << eventIdx << std::endl;
+	}
+	evtId = eventIdx;
+	
+	hPolyPad->ClearBinContents();
+	
+	BkgProfileOdd->Reset();
+	BkgProfileEven->Reset();
             BkgProfileOddCorr->Reset();
 	    BkgProfileEvenCorr->Reset();
 
@@ -362,7 +378,7 @@ void grawToTree( int numEvents = -1 ) {  // # of events to be analyzed.  If -1, 
 	frame.CloseGrawFile();
     }
     
-    TFile* fout = new TFile("treeOfHits.root","recreate");
+    TFile* fout = new TFile(Form("treeOfHits_muon_run%d.root",runNumber),"recreate");
     treeOut->Write();
     fout->Close();
     
