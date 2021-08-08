@@ -22,23 +22,29 @@
 #include "TTree.h"
 
 void doCluster( TH2F* hAdc, TH2F* hTime, float seedThr, TH1F* timediff, TH1F* hResChg, TH1F* hResTime);
-  
+
+float bdcTime_to_Sec ( int bdcTime); 
+
 //bool isDebugMode = true ;
 bool isDebugMode = false ;
 
 float dtCut = 0.25;
 
+bool add_BDC_Info = true;
+
+
 void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1, we analyze everything
-
-
+  
+  
   float seedThr = 100;
-
+  
   float  vDrift = 48 ; // in mm/microsecond  <= This must be updated! 
-  TFile* fileIn = new TFile("./treeOfHits.root");
+  TFile* fileIn = new TFile("./treeOfHits_muon_run1.root");
 
   TTree* t = (TTree*)fileIn->Get("hit");
   int evtId;
   int nhits;
+  double evtTime;
   float xTree[256];  // x = row * 100mm / 8
   float yTree[256];  // y = col * 100mm / 32
   int xId[256];  // x = row * 100mm / 8
@@ -54,9 +60,58 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
   t->SetBranchAddress("yid",yId);
   t->SetBranchAddress("time",timeTree);
   t->SetBranchAddress("adc",adcTree);
+  t->SetBranchAddress("evtTime", &evtTime);
+
+  t->GetEntry(0);  // 0점 맞추기
+  double ATTPC_evt0_time = evtTime; 
+
   
-  TH2F* htemp = new TH2F("htemp",";Y (mm); x (mm)",100,0,100, 100,0,100);
-  TH1F* hNhits = new TH1F("hNhits",";# of hits;",200,.5,199.5);
+  TChain* tBdc = new TChain("trkTree");
+  Int_t           Event;
+  Int_t           trckNumX;
+  Int_t           trckNumY;
+  Double_t        Xgrad[10];   //[trckNumX]
+  Double_t        Ygrad[10];   //[trckNumY]
+  Double_t        Xc[10];   //[trckNumX]
+  Double_t        Yc[10];   //[trckNumY]
+  Int_t           EvtTime_bdc;
+  Double_t        dur_sec;
+   // List of branches
+   TBranch        *b_Event;   //!
+   TBranch        *b_trckNumX;   //!
+   TBranch        *b_trckNumY;   //!
+   TBranch        *b_Xgrad;   //!
+   TBranch        *b_Ygrad;   //!
+   TBranch        *b_Xc;   //!
+   TBranch        *b_Yc;   //!
+   TBranch        *b_EvtTime_bdc;   //!
+   TBranch        *b_dur_sec;   //!
+
+   float BDC_evt0_time = 0; 
+   if (add_BDC_Info)  {
+     tBdc->Add("BDCTrackingData/bdcAnaTrack_Data_SJ_Run_520_20210806_v2.root");
+     tBdc->SetBranchAddress("Event", &Event, &b_Event);
+     tBdc->SetBranchAddress("trckNumX", &trckNumX, &b_trckNumX);
+     tBdc->SetBranchAddress("trckNumY", &trckNumY, &b_trckNumY);
+     tBdc->SetBranchAddress("Xgrad", Xgrad, &b_Xgrad);
+     tBdc->SetBranchAddress("Ygrad", Ygrad, &b_Ygrad);
+     tBdc->SetBranchAddress("Xc", Xc, &b_Xc);
+     tBdc->SetBranchAddress("Yc", Yc, &b_Yc);
+     tBdc->SetBranchAddress("EvtTime", &EvtTime_bdc, &b_EvtTime_bdc);
+     tBdc->SetBranchAddress("dur_sec", &dur_sec, &b_dur_sec); 
+     
+     tBdc->GetEntry(0);
+     BDC_evt0_time = bdcTime_to_Sec ( EvtTime_bdc) ; 
+     cout << " BDC reference time (str) = " << EvtTime_bdc << endl;
+     cout << " BDC reference time (sec) = " << BDC_evt0_time << endl; 
+   }
+   
+   
+   
+   
+   
+   TH2F* htemp = new TH2F("htemp",";Y (mm); x (mm)",100,0,100, 100,0,100);
+   TH1F* hNhits = new TH1F("hNhits",";# of hits;",200,.5,199.5);
   
   TH2F* hAdc = new TH2F("hAdc",";x (mm);y (mm);ADC",   32, -.5*3.125, 31.5*3.125,   8, -.5*12.5, 7.5*12.5);
   TH2F* hTime = new TH2F("hTime",";x (mm);y (mm);Time",32, -.5*3.125, 31.5*3.125,   8, -.5*12.5, 7.5*12.5);
@@ -87,6 +142,19 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
     t->GetEntry(iev);
     hNhits->Fill(nhits);
 
+    double attpc_time = evtTime - ATTPC_evt0_time ; 
+    cout << " AT-TPC event time = " << attpc_time << endl; 
+    
+    if (add_BDC_Info)  { 
+      // Match with BDC track! 
+      for ( int jev =0  ; jev < tBdc->GetEntries() ; jev++) {
+	tBdc->GetEntry(jev);
+	float bdc_time  = bdcTime_to_Sec ( EvtTime_bdc)  - BDC_evt0_time ;
+	cout << " EvtTime_bdc = " << bdc_time << endl;
+      }
+      
+    }
+    
 
     hTimeGrid->Reset();
     hAdcGrid->Reset();
@@ -191,7 +259,7 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
   hThetaYZ->Fit("gaus");
   hThetaYZ->SetStats(1);
   hThetaYZ->Draw();
-    cout << "hThetaXY->Integral()=" << hThetaXY->Integral() << endl;
+  cout << "hThetaXY->Integral()=" << hThetaXY->Integral() << endl;
   
 }
 
@@ -278,5 +346,16 @@ void doCluster( TH2F* hAdc, TH2F* hTime, float seedThr, TH1F* timediff, TH1F* hR
   
   delete fGaus;
   delete hForFit;
+  
+}
+
+float bdcTime_to_Sec ( int bdcTime) {
+  // DD HH MM SS
+  int dd = bdcTime/1000000;
+  int hh = (bdcTime%1000000) /10000;
+  int mm = (bdcTime%10000) / 100;
+  int ss = bdcTime%100;
+
+  return dd*86400 + hh*3600 + mm*60 + ss;
   
 }
