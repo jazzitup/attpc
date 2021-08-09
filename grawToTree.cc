@@ -202,7 +202,10 @@ void grawToTree( int numEvents = -1, int runNumber = 1 ) {  // # of events to be
 	}
 	
 	if (  (nBkgChanOdd < 11) || (nBkgChanEven < 11) )  {
-	  cout << "Not enough background channels!! So, we skip this event." << endl;
+	  //	  cout << "Not enough background channels!! So, we skip this event." << endl;
+	  // We should record this as an empty event, for the sake of matching with BDC
+	  nhits = 0 ;
+	  treeOut->Fill(); // fill the tree
 	  continue;
 	}
 	
