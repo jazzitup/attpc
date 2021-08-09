@@ -31,15 +31,15 @@ void bdcAna( int numEvents = -1 ) {  // # of events to be analyzed.  If -1, we a
 
   float  vDrift = 48 ; // in mm/microsecond  <= This must be updated! 
   TChain* tBdc = new TChain("trkTree");
-  tBdc->Add("BDCTrackingData/bdcAnaTrack_Data_SJ_Run_520_20210806_v2.root");
-  tBdc->Add("BDCTrackingData/bdcAnaTrack_Data_SJ_Run_530_20210806_v2.root");
-  tBdc->Add("BDCTrackingData/bdcAnaTrack_Data_SJ_Run_531_20210806_v2.root");
-  tBdc->Add("BDCTrackingData/bdcAnaTrack_Data_SJ_Run_532_20210806_v2.root");
-  tBdc->Add("BDCTrackingData/bdcAnaTrack_Data_SJ_Run_533_20210806_v2.root");
-  tBdc->Add("BDCTrackingData/bdcAnaTrack_Data_SJ_Run_534_20210806_v2.root");
-  tBdc->Add("BDCTrackingData/bdcAnaTrack_Data_SJ_Run_550_20210806_v2.root");
-  tBdc->Add("BDCTrackingData/bdcAnaTrack_Data_SJ_Run_560_20210806_v2.root");
-  tBdc->Add("BDCTrackingData/bdcAnaTrack_Data_SJ_Run_561_20210806_v2.root");
+  tBdc->Add("BDCTrackingData/bdcAnaTrack_Data_SJ_Run_520_selecttrack_20210808_v3.root");
+  tBdc->Add("BDCTrackingData/bdcAnaTrack_Data_SJ_Run_530_selecttrack_20210808_v3.root");
+  tBdc->Add("BDCTrackingData/bdcAnaTrack_Data_SJ_Run_531_selecttrack_20210808_v3.root");
+  tBdc->Add("BDCTrackingData/bdcAnaTrack_Data_SJ_Run_532_selecttrack_20210808_v3.root");
+  tBdc->Add("BDCTrackingData/bdcAnaTrack_Data_SJ_Run_533_selecttrack_20210808_v3.root");
+  tBdc->Add("BDCTrackingData/bdcAnaTrack_Data_SJ_Run_534_selecttrack_20210808_v3.root");
+  tBdc->Add("BDCTrackingData/bdcAnaTrack_Data_SJ_Run_550_selecttrack_20210808_v3.root");
+  tBdc->Add("BDCTrackingData/bdcAnaTrack_Data_SJ_Run_560_selecttrack_20210808_v3.root");
+  tBdc->Add("BDCTrackingData/bdcAnaTrack_Data_SJ_Run_561_selecttrack_20210808_v3.root");
   Int_t           Event;
   Int_t           trckNumX;
   Int_t           trckNumY;
@@ -91,7 +91,9 @@ void bdcAna( int numEvents = -1 ) {  // # of events to be analyzed.  If -1, we a
      if  (trckNumX == 1) countsX++;
      if  (trckNumY == 1) countsY++;
      
-
+     if ( ! ((trckNumX == 1)&&(trckNumY==1)))
+       continue;
+       
      // xz plane : 
      for ( int ix = 0 ; ix<trckNumX;  ix++) {
        // z = Xgrad[ix] *x + Xc ; 
