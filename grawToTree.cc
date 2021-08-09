@@ -120,6 +120,10 @@ void grawToTree( int numEvents = -1, int runNumber = 1 ) {  // # of events to be
 
     double prevEvtTime = -100;  // for the empty event cut;
     double emptyEvtTimeCut = 0.03;
+    
+    double veryFirstEventTime = -100;
+
+
     while ( !fList.eof() )  {
       std::string fName;
       std::getline(fList, fName);
@@ -128,8 +132,12 @@ void grawToTree( int numEvents = -1, int runNumber = 1 ) {  // # of events to be
       int eventIdx;
       while ( frame.Decode() && ((numEvents==-1) || (countEvents<numEvents)) ) {
 
+	if (veryFirstEventTime == -100)
+	  veryFirstEventTime = frame.GetEventTime() * 1e-8; 
+
+	evtTime =  frame.GetEventTime() * 1e-8 - veryFirstEventTime; // in second
+
 	// Empty event cut /////////////////////////////////
-	evtTime =  frame.GetEventTime() * 1e-8; // in second
 	//	cout << " prev = " << prevEvtTime << endl;
 	//	cout << " now = " << evtTime << endl;
 	if  ( evtTime - prevEvtTime < emptyEvtTimeCut )
@@ -148,234 +156,234 @@ void grawToTree( int numEvents = -1, int runNumber = 1 ) {  // # of events to be
 	
 	BkgProfileOdd->Reset();
 	BkgProfileEven->Reset();
-            BkgProfileOddCorr->Reset();
-	    BkgProfileEvenCorr->Reset();
-
-	    int nBkgChanOdd = 0 ; // number of bahckground channels ( maxADC < thredhold1)  in odd channels
-	    int nBkgChanEven = 0 ; // number of bahckground channels ( maxADC < thredhold1)  in even channels
-	    
-	    for (int agetIdx = 0; agetIdx < 4; agetIdx++) {
-	      for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
-		hSignal->Reset();  // Initiation! 
-		if (frame.IsFPNChannel(chanIdx)) continue;
-		for (int buckIdx = 1; buckIdx < 512; buckIdx++) {
-		  hSignal->SetBinContent(buckIdx, frame.GetADC(agetIdx, chanIdx, buckIdx));
-		}
-		
-		// Background estimation procedure: 
-		// step0 : copy the hSignal into the hSignalarrays
-		hSignalArr[agetIdx][chanIdx]->Reset();
-		hSignalArr[agetIdx][chanIdx]->Add(hSignal);
-
-		// step1 : Select only background channels 
-		bool isBkgChan = false; 
-		int maxBin = hSignalArr[agetIdx][chanIdx]->GetMaximumBin();
-		int maxVal = hSignalArr[agetIdx][chanIdx]->GetBinContent(maxBin);
-		if (  maxVal < threshold1 )   {
-		  isBkgChan = true; 
-		  if ( isEven(agetIdx, chanIdx) )       nBkgChanEven++;
-		  else                                  nBkgChanOdd++;
-		}
-		// step2 : Normalize each histogram to fit the region of timebuck 0 ~ 100 ) 
-		if ( isBkgChan == true) {
-		  htemp->Reset();
-		  htemp->Add(hSignalArr[agetIdx][chanIdx]);
-		  htemp->Scale( 5000./ htemp->Integral(1,50)) ;
-		  
-		  for (int buckIdx = 1; buckIdx < 512; buckIdx++) {
-		    if ( isEven(agetIdx, chanIdx) ) 
-		      BkgProfileEven->Fill ( buckIdx, htemp->GetBinContent(buckIdx) );
-		    else  
-		      BkgProfileOdd->Fill ( buckIdx, htemp->GetBinContent(buckIdx) );
-		  }		    
-		}
-		
-	      }
-	    }
-	    
-	    if (  (nBkgChanOdd < 11) || (nBkgChanEven < 11) )  {
-	      cout << "Not enough background channels!! So, we skip this event." << endl;
-	      continue;
-	    }
-	    
-	    // Remove the 5 maxs and 5 mins fomr BkgProfileEven and BkgProfileOdd
-	    vector<int> even_vec;
-	    vector<int> odd_vec;
+	BkgProfileOddCorr->Reset();
+	BkgProfileEvenCorr->Reset();
+	
+	int nBkgChanOdd = 0 ; // number of bahckground channels ( maxADC < thredhold1)  in odd channels
+	int nBkgChanEven = 0 ; // number of bahckground channels ( maxADC < thredhold1)  in even channels
+	
+	for (int agetIdx = 0; agetIdx < 4; agetIdx++) {
+	  for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
+	    hSignal->Reset();  // Initiation! 
+	    if (frame.IsFPNChannel(chanIdx)) continue;
 	    for (int buckIdx = 1; buckIdx < 512; buckIdx++) {
-	      even_vec.clear();
-	      odd_vec.clear();
-	      for ( int adcBin = 1;  adcBin <=nRelAdcBins ; adcBin++) { 
-		for ( int jj = 0 ; jj < BkgProfileEven->GetBinContent ( buckIdx, adcBin ) ;  jj++) {
-		  even_vec.push_back( adcBin ) ;
-		}
-		for ( int jj = 0 ; jj < BkgProfileOdd->GetBinContent ( buckIdx, adcBin ) ;  jj++) {
-		  odd_vec.push_back( adcBin ) ;
-		}
-	      }
-    
-	      // Trim the highest and lowest 5 channesl 
-	      std::sort( even_vec.begin(), even_vec.end());
-	      for ( int ii=5 ; ii< even_vec.size() -5 ; ii++) {
-		BkgProfileEvenCorr->Fill ( buckIdx, even_vec.at(ii)); 
-	      }
-	      std::sort( odd_vec.begin(), odd_vec.end() );
-	      for ( int ii=5 ; ii< odd_vec.size() - 5 ;  ii++) {
-		BkgProfileOddCorr->Fill (  buckIdx, odd_vec.at(ii)); 
-	      }
+	      hSignal->SetBinContent(buckIdx, frame.GetADC(agetIdx, chanIdx, buckIdx));
 	    }
 	    
-	    hBkgTemplateOdd->Reset();
-	    hBkgTemplateEven->Reset();
-	    TH1F* htemp1 = (TH1F*)BkgProfileOddCorr->ProfileX()->ProjectionX();
-	    hBkgTemplateOdd->Add(htemp1);
-	    TH1F* htemp2 = (TH1F*)BkgProfileEvenCorr->ProfileX()->ProjectionX();
-	    hBkgTemplateEven->Add( htemp2);
-	    delete htemp1;
-	    delete htemp2;
-	      
-	    //	    hBkgTemplateOdd->Add( (TH1F*)BkgProfileOddCorr->ProfileX()->ProjectionX());
-	    //	    hBkgTemplateEven->Add( (TH1F*)BkgProfileEvenCorr->ProfileX()->ProjectionX());
+	    // Background estimation procedure: 
+	    // step0 : copy the hSignal into the hSignalarrays
+	    hSignalArr[agetIdx][chanIdx]->Reset();
+	    hSignalArr[agetIdx][chanIdx]->Add(hSignal);
 	    
-	    
-	    
-	    // After all, let's subtract the background
-	    for (int agetIdx = 0; agetIdx < 4; agetIdx++) {
-	      for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
-		if (frame.IsFPNChannel(chanIdx)) continue;
-		hSignalBsArr[agetIdx][chanIdx]->Reset();
-		hSignalBsArr[agetIdx][chanIdx]->Add(hSignalArr[agetIdx][chanIdx]);
-		TH1F* hTheBkg;
-		if (isEven(agetIdx, chanIdx))    hTheBkg = (TH1F*)hBkgTemplateEven->Clone("hTheBkg"); 
-		else    		         hTheBkg = (TH1F*)hBkgTemplateOdd->Clone("hTheBkg"); 
-		// Scale the background to fit the side band tome bucket 0 - 50 
-		hTheBkg->Scale(  hSignalArr[agetIdx][chanIdx]->Integral(1,50) / hTheBkg->Integral(1,50) );
-		hSignalBsArr[agetIdx][chanIdx]->Add( hTheBkg, -1);
-		delete hTheBkg;
-		
-	      }
+	    // step1 : Select only background channels 
+	    bool isBkgChan = false; 
+	    int maxBin = hSignalArr[agetIdx][chanIdx]->GetMaximumBin();
+	    int maxVal = hSignalArr[agetIdx][chanIdx]->GetBinContent(maxBin);
+	    if (  maxVal < threshold1 )   {
+	      isBkgChan = true; 
+	      if ( isEven(agetIdx, chanIdx) )       nBkgChanEven++;
+	      else                                  nBkgChanOdd++;
 	    }
-
-	    if ( isDebugMode) {
-	      // Check if the hisgroams are well made
-
-              cvsBkgChan->cd(1);
-              BkgProfileEven->Draw("colz");
-              cvsBkgChan->cd(2);
-              BkgProfileOdd->Draw("colz");
-
-              cvsBkgChan->cd(3);
-              BkgProfileEvenCorr->Draw("colz");
-              cvsBkgChan->cd(4);
-              BkgProfileOddCorr->Draw("colz");
-
-              cvsBkgChan->cd(5);
-              hBkgTemplateEven->SetAxisRange(0,200,"Y");
-	      hBkgTemplateEven->Draw();
-              cvsBkgChan->cd(6);
-              hBkgTemplateOdd->SetAxisRange(0,200,"Y");
-              hBkgTemplateOdd->Draw();
-
-              cvsBkgChan->SaveAs(Form("./figureDebug/cvsBkgChan_%05d.png", eventIdx));
-
-
-              for (int agetIdx = 0; agetIdx < 4; agetIdx++) {
-                cvsAllChan->cd(agetIdx+1);
-                htemp->Reset();
-                htemp->SetAxisRange(-500,3000,"Y");
-                htemp->DrawCopy();
-                for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
-                  if (frame.IsFPNChannel(chanIdx)) continue;
-                  hSignalArr[agetIdx][chanIdx]->Draw("same");
-		}
-		jumSun(0,0,512,0,2);
-		
-		cvsAllChan->cd(agetIdx+5);
-		htemp->Draw();
-                for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
-		  if (frame.IsFPNChannel(chanIdx)) continue;
-                  hSignalBsArr[agetIdx][chanIdx]->Draw("same hist");
-                }
-		jumSun(0,0,512,0,2);
-	      }
-	      cvsAllChan->Update();
-              cvsAllChan->SaveAs(Form("./figureDebug/cvsAllChan_%05d.png", eventIdx));
+	    // step2 : Normalize each histogram to fit the region of timebuck 0 ~ 100 ) 
+	    if ( isBkgChan == true) {
+	      htemp->Reset();
+	      htemp->Add(hSignalArr[agetIdx][chanIdx]);
+	      htemp->Scale( 5000./ htemp->Integral(1,50)) ;
 	      
-	    } 
+	      for (int buckIdx = 1; buckIdx < 512; buckIdx++) {
+		if ( isEven(agetIdx, chanIdx) ) 
+		  BkgProfileEven->Fill ( buckIdx, htemp->GetBinContent(buckIdx) );
+		else  
+		  BkgProfileOdd->Fill ( buckIdx, htemp->GetBinContent(buckIdx) );
+	      }		    
+	    }
 	    
-
-	    // Now, let's fit the pulse shape!
-
-	    nhits = 0;
-	    for (int agetIdx = 0; agetIdx < 4; agetIdx++) {
-	      for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
-		if (frame.IsFPNChannel(chanIdx)) continue;
-		
-		hSignal->Reset();
-		hSignal->Add(hSignalBsArr[agetIdx][chanIdx]);  // the histogram to be analyzed;
-
-		bool isSignalCand = false;
-		cvsSignal->cd();
-		int maxBin = hSignal->GetMaximumBin();
-		int maxVal = hSignal->GetBinContent(maxBin);
-		double meanVal = hSignal->Integral(1, 50) / 50.;
-		
-		hSignal->SetAxisRange(-400, 4000, "Y");
-		if (maxBin < 450 && maxBin > 50 && maxVal > 20) {
-		  isSignalCand = true;
-		  // Should set initial parameters for fair fits.  Otherwise, the previous channel result will bias it. 
-		  fFit->SetParameters(meanVal, maxVal * TMath::Power((0.05 * TMath::E()) / 3., 3) + 0.02, 0.05, maxBin - 50);
-		  //		  fFit->SetRange( max(maxBin-100,0) , maxBin + 100);
-		  hSignal->Fit("fFit", "Q");
-		  gStyle->SetOptFit(1111);
-
-		  float realMaxVal =  fFit->GetMaximum(1,512); // aa * TMath::Power(3. / (cc * TMath::E()), 3);
-		  float timing = fFit->GetParameter(3);
-		  float xCoor = pMap.GetX(agetIdx, chanIdx);
-		  float yCoor = pMap.GetY(agetIdx, chanIdx);
-		  int xId = pMap.GetXId(agetIdx, chanIdx);
-		  int yId = pMap.GetYId(agetIdx, chanIdx);
-		  hPolyPad->Fill(xCoor, yCoor, realMaxVal);
-		  // Now let's prepare the variables for the tree
-		  xTree[nhits] =  pMap.GetX(agetIdx, chanIdx);
-		  yTree[nhits] =  pMap.GetY(agetIdx, chanIdx);
-		  xIdTree[nhits] =  pMap.GetXId(agetIdx, chanIdx);
-		  yIdTree[nhits] =  pMap.GetYId(agetIdx, chanIdx);
-		  adcTree[nhits] = realMaxVal; 
-		  timeTree[nhits] = timing; 
-		  nhits++;
-
-		  
-		  if ( isDebugMode) { 
-		    hSignal->SetStats(0);
-		    hSignal->Draw();
-		    TLegend *l1=new TLegend(0.15,0.7,0.4,0.85,NULL);
-		    l1->SetHeader("Fit result");
-		    l1->SetBorderSize(0);
-		    l1->SetLineColor(1);
-		    l1->SetLineStyle(1);
-		    l1->AddEntry("", Form("Amplitude = %.f",(float)realMaxVal),"");
-		    l1->AddEntry("", Form("Timing = %.1f", timing),"");
-		    l1->Draw();
-		    cvsSignal->Update();
-		    if (doSaveFitPerf)
-		      cvsSignal->SaveAs(Form("./fitResults/signal_%05d_%d_%d.png", eventIdx, agetIdx, chanIdx));
-		  }  
-		}   
-	       }
-	    } 
-	    
-	    cvsPad->cd();
-	    hPolyPad->SetAxisRange(0, 4000, "Z");
-	    hPolyPad->Draw("colz");
-	    hPolyPad->SetStats(0);
-	    cvsPad->Update();
-	    cvsPad->SetLogz();
-	    cvsPad->SaveAs(Form("./track/event%05d.png", eventIdx));
-
-	    treeOut->Fill(); // fill the tree
-	    countEvents++;
+	  }
 	}
-	frame.CloseGrawFile();
+	
+	if (  (nBkgChanOdd < 11) || (nBkgChanEven < 11) )  {
+	  cout << "Not enough background channels!! So, we skip this event." << endl;
+	  continue;
+	}
+	
+	// Remove the 5 maxs and 5 mins fomr BkgProfileEven and BkgProfileOdd
+	vector<int> even_vec;
+	vector<int> odd_vec;
+	for (int buckIdx = 1; buckIdx < 512; buckIdx++) {
+	  even_vec.clear();
+	  odd_vec.clear();
+	  for ( int adcBin = 1;  adcBin <=nRelAdcBins ; adcBin++) { 
+	    for ( int jj = 0 ; jj < BkgProfileEven->GetBinContent ( buckIdx, adcBin ) ;  jj++) {
+	      even_vec.push_back( adcBin ) ;
+	    }
+	    for ( int jj = 0 ; jj < BkgProfileOdd->GetBinContent ( buckIdx, adcBin ) ;  jj++) {
+	      odd_vec.push_back( adcBin ) ;
+	    }
+	  }
+	  
+	  // Trim the highest and lowest 5 channesl 
+	  std::sort( even_vec.begin(), even_vec.end());
+	  for ( int ii=5 ; ii< even_vec.size() -5 ; ii++) {
+	    BkgProfileEvenCorr->Fill ( buckIdx, even_vec.at(ii)); 
+	      }
+	  std::sort( odd_vec.begin(), odd_vec.end() );
+	  for ( int ii=5 ; ii< odd_vec.size() - 5 ;  ii++) {
+	    BkgProfileOddCorr->Fill (  buckIdx, odd_vec.at(ii)); 
+	  }
+	}
+	
+	hBkgTemplateOdd->Reset();
+	hBkgTemplateEven->Reset();
+	TH1F* htemp1 = (TH1F*)BkgProfileOddCorr->ProfileX()->ProjectionX();
+	hBkgTemplateOdd->Add(htemp1);
+	TH1F* htemp2 = (TH1F*)BkgProfileEvenCorr->ProfileX()->ProjectionX();
+	hBkgTemplateEven->Add( htemp2);
+	delete htemp1;
+	delete htemp2;
+	
+	//	    hBkgTemplateOdd->Add( (TH1F*)BkgProfileOddCorr->ProfileX()->ProjectionX());
+	//	    hBkgTemplateEven->Add( (TH1F*)BkgProfileEvenCorr->ProfileX()->ProjectionX());
+	
+	
+	
+	// After all, let's subtract the background
+	for (int agetIdx = 0; agetIdx < 4; agetIdx++) {
+	  for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
+	    if (frame.IsFPNChannel(chanIdx)) continue;
+	    hSignalBsArr[agetIdx][chanIdx]->Reset();
+	    hSignalBsArr[agetIdx][chanIdx]->Add(hSignalArr[agetIdx][chanIdx]);
+	    TH1F* hTheBkg;
+	    if (isEven(agetIdx, chanIdx))    hTheBkg = (TH1F*)hBkgTemplateEven->Clone("hTheBkg"); 
+	    else    		         hTheBkg = (TH1F*)hBkgTemplateOdd->Clone("hTheBkg"); 
+	    // Scale the background to fit the side band tome bucket 0 - 50 
+	    hTheBkg->Scale(  hSignalArr[agetIdx][chanIdx]->Integral(1,50) / hTheBkg->Integral(1,50) );
+	    hSignalBsArr[agetIdx][chanIdx]->Add( hTheBkg, -1);
+	    delete hTheBkg;
+	    
+	  }
+	}
+	
+	if ( isDebugMode) {
+	  // Check if the hisgroams are well made
+	  
+	  cvsBkgChan->cd(1);
+	  BkgProfileEven->Draw("colz");
+	  cvsBkgChan->cd(2);
+	  BkgProfileOdd->Draw("colz");
+	  
+	  cvsBkgChan->cd(3);
+	  BkgProfileEvenCorr->Draw("colz");
+	  cvsBkgChan->cd(4);
+	  BkgProfileOddCorr->Draw("colz");
+	  
+	  cvsBkgChan->cd(5);
+	  hBkgTemplateEven->SetAxisRange(0,200,"Y");
+	  hBkgTemplateEven->Draw();
+	  cvsBkgChan->cd(6);
+	  hBkgTemplateOdd->SetAxisRange(0,200,"Y");
+	  hBkgTemplateOdd->Draw();
+	  
+	  //              cvsBkgChan->SaveAs(Form("./figureDebug/cvsBkgChan_%05d.png", eventIdx));
+	  
+	  
+	  for (int agetIdx = 0; agetIdx < 4; agetIdx++) {
+	    cvsAllChan->cd(agetIdx+1);
+	    htemp->Reset();
+	    htemp->SetAxisRange(-500,3000,"Y");
+	    htemp->DrawCopy();
+	    for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
+	      if (frame.IsFPNChannel(chanIdx)) continue;
+	      hSignalArr[agetIdx][chanIdx]->Draw("same");
+	    }
+	    jumSun(0,0,512,0,2);
+	    
+	    cvsAllChan->cd(agetIdx+5);
+	    htemp->Draw();
+	    for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
+	      if (frame.IsFPNChannel(chanIdx)) continue;
+	      hSignalBsArr[agetIdx][chanIdx]->Draw("same hist");
+	    }
+	    jumSun(0,0,512,0,2);
+	  }
+	  cvsAllChan->Update();
+	  //              cvsAllChan->SaveAs(Form("./figureDebug/cvsAllChan_%05d.png", eventIdx));
+	  
+	} 
+	
+	
+	// Now, let's fit the pulse shape!
+	
+	nhits = 0;
+	for (int agetIdx = 0; agetIdx < 4; agetIdx++) {
+	  for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
+	    if (frame.IsFPNChannel(chanIdx)) continue;
+	    
+	    hSignal->Reset();
+	    hSignal->Add(hSignalBsArr[agetIdx][chanIdx]);  // the histogram to be analyzed;
+	    
+	    bool isSignalCand = false;
+	    cvsSignal->cd();
+	    int maxBin = hSignal->GetMaximumBin();
+	    int maxVal = hSignal->GetBinContent(maxBin);
+	    double meanVal = hSignal->Integral(1, 50) / 50.;
+	    
+	    hSignal->SetAxisRange(-400, 4000, "Y");
+	    if (maxBin < 450 && maxBin > 50 && maxVal > 20) {
+	      isSignalCand = true;
+	      // Should set initial parameters for fair fits.  Otherwise, the previous channel result will bias it. 
+	      fFit->SetParameters(meanVal, maxVal * TMath::Power((0.05 * TMath::E()) / 3., 3) + 0.02, 0.05, maxBin - 50);
+	      //		  fFit->SetRange( max(maxBin-100,0) , maxBin + 100);
+	      hSignal->Fit("fFit", "Q");
+	      gStyle->SetOptFit(1111);
+	      
+	      float realMaxVal =  fFit->GetMaximum(1,512); // aa * TMath::Power(3. / (cc * TMath::E()), 3);
+	      float timing = fFit->GetParameter(3);
+	      float xCoor = pMap.GetX(agetIdx, chanIdx);
+	      float yCoor = pMap.GetY(agetIdx, chanIdx);
+	      int xId = pMap.GetXId(agetIdx, chanIdx);
+	      int yId = pMap.GetYId(agetIdx, chanIdx);
+	      hPolyPad->Fill(xCoor, yCoor, realMaxVal);
+	      // Now let's prepare the variables for the tree
+	      xTree[nhits] =  pMap.GetX(agetIdx, chanIdx);
+	      yTree[nhits] =  pMap.GetY(agetIdx, chanIdx);
+	      xIdTree[nhits] =  pMap.GetXId(agetIdx, chanIdx);
+	      yIdTree[nhits] =  pMap.GetYId(agetIdx, chanIdx);
+	      adcTree[nhits] = realMaxVal; 
+	      timeTree[nhits] = timing; 
+	      nhits++;
+	      
+	      
+	      if ( isDebugMode) { 
+		hSignal->SetStats(0);
+		hSignal->Draw();
+		TLegend *l1=new TLegend(0.15,0.7,0.4,0.85,NULL);
+		l1->SetHeader("Fit result");
+		l1->SetBorderSize(0);
+		l1->SetLineColor(1);
+		l1->SetLineStyle(1);
+		l1->AddEntry("", Form("Amplitude = %.f",(float)realMaxVal),"");
+		l1->AddEntry("", Form("Timing = %.1f", timing),"");
+		l1->Draw();
+		cvsSignal->Update();
+		if (doSaveFitPerf)
+		  cvsSignal->SaveAs(Form("./fitResults/signal_%05d_%d_%d.png", eventIdx, agetIdx, chanIdx));
+	      }  
+	    }   
+	  }
+	} 
+	
+	cvsPad->cd();
+	hPolyPad->SetAxisRange(0, 4000, "Z");
+	hPolyPad->Draw("colz");
+	hPolyPad->SetStats(0);
+	cvsPad->Update();
+	cvsPad->SetLogz();
+	//	    cvsPad->SaveAs(Form("./track/event%05d.png", eventIdx));
+	
+	treeOut->Fill(); // fill the tree
+	countEvents++;
+      }
+      frame.CloseGrawFile();
     }
     
     TFile* fout = new TFile(Form("treeOfHits_muon_run%d.root",runNumber),"recreate");
