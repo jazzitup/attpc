@@ -23,7 +23,7 @@
 
 void doCluster( TH2F* hAdc, TH2F* hTime, float seedThr, TH1F* timediff, TH1F* hResChg, TH1F* hResTime);
 
-float bdcTime_to_Sec ( int bdcTime); 
+//float bdcTime_to_Sec ( int bdcTime); 
 
 //bool isDebugMode = true ;
 bool isDebugMode = false ;
@@ -74,8 +74,9 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
   Double_t        Ygrad[10];   //[trckNumY]
   Double_t        Xc[10];   //[trckNumX]
   Double_t        Yc[10];   //[trckNumY]
-  Int_t           EvtTime_bdc;
-  Double_t        dur_sec;
+  //  Int_t           EvtTime_bdc;
+  //  Double_t        dur_sec;
+  Double_t        dur_secDif;
    // List of branches
    TBranch        *b_Event;   //!
    TBranch        *b_trckNumX;   //!
@@ -86,10 +87,11 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
    TBranch        *b_Yc;   //!
    TBranch        *b_EvtTime_bdc;   //!
    TBranch        *b_dur_sec;   //!
-
-   float BDC_evt0_time = 0; 
+   TBranch        *b_dur_secDif;   //!
+   
+   double BDC_evt0_time = 0; 
    if (add_BDC_Info)  {
-     tBdc->Add("BDCTrackingData/bdcAnaTrack_Data_SJ_Run_520_20210806_v2.root");
+     tBdc->Add("BDCTrackingData/bdcAnaTrack_Data_SJ_Run_520_selecttrack_20210808_v3.root");
      tBdc->SetBranchAddress("Event", &Event, &b_Event);
      tBdc->SetBranchAddress("trckNumX", &trckNumX, &b_trckNumX);
      tBdc->SetBranchAddress("trckNumY", &trckNumY, &b_trckNumY);
@@ -97,12 +99,12 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
      tBdc->SetBranchAddress("Ygrad", Ygrad, &b_Ygrad);
      tBdc->SetBranchAddress("Xc", Xc, &b_Xc);
      tBdc->SetBranchAddress("Yc", Yc, &b_Yc);
-     tBdc->SetBranchAddress("EvtTime", &EvtTime_bdc, &b_EvtTime_bdc);
-     tBdc->SetBranchAddress("dur_sec", &dur_sec, &b_dur_sec); 
-     
+     //     tBdc->SetBranchAddress("EvtTime", &EvtTime_bdc, &b_EvtTime_bdc);
+     //     tBdc->SetBranchAddress("dur_sec", &dur_sec, &b_dur_sec); 
+     tBdc->SetBranchAddress("dur_secDif", &dur_secDif, &b_dur_secDif);
+	
      tBdc->GetEntry(0);
-     BDC_evt0_time = bdcTime_to_Sec ( EvtTime_bdc) ; 
-     cout << " BDC reference time (str) = " << EvtTime_bdc << endl;
+     cout << " BDC reference time (str) = " << dur_secDif << endl;
      cout << " BDC reference time (sec) = " << BDC_evt0_time << endl; 
    }
    
@@ -149,7 +151,7 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
       // Match with BDC track! 
       for ( int jev =0  ; jev < tBdc->GetEntries() ; jev++) {
 	tBdc->GetEntry(jev);
-	float bdc_time  = bdcTime_to_Sec ( EvtTime_bdc)  - BDC_evt0_time ;
+	double bdc_time  = dur_secDif - BDC_evt0_time ;
 	cout << " EvtTime_bdc = " << bdc_time << endl;
       }
       
@@ -349,7 +351,7 @@ void doCluster( TH2F* hAdc, TH2F* hTime, float seedThr, TH1F* timediff, TH1F* hR
   
 }
 
-float bdcTime_to_Sec ( int bdcTime) {
+/* float bdcTime_to_Sec ( int bdcTime) {
   // DD HH MM SS
   int dd = bdcTime/1000000;
   int hh = (bdcTime%1000000) /10000;
@@ -359,3 +361,4 @@ float bdcTime_to_Sec ( int bdcTime) {
   return dd*86400 + hh*3600 + mm*60 + ss;
   
 }
+*/
