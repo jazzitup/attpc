@@ -33,6 +33,18 @@ float dtCut = 0.25;
 bool add_BDC_Info = true;
 
 
+double bY_to_aX ( double bY); 
+double bX_to_aZ ( double bX);
+double bZ_to_aY ( double bZ);
+
+double aX_to_bY ( double bY); 
+double aZ_to_bX ( double bX);
+double aY_to_bZ ( double bZ);
+
+
+
+
+
 void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1, we analyze everything
   
   
@@ -168,8 +180,8 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
       }
       index_attpc_to_bdc[iev] = matchedIndex ;
       hTimeDiff->Fill( minDiff);
-      cout << " attpc_time = " << atime_arr[iev] << "    ";
-      cout << " bdc_time = " << btime_arr[ index_attpc_to_bdc[iev] ]  <<"    diff = " << minDiff  << endl;
+      //      cout << " attpc_time = " << atime_arr[iev] << "    ";
+      //      cout << " bdc_time = " << btime_arr[ index_attpc_to_bdc[iev] ]  <<"    diff = " << minDiff  << endl;
   }
   
   
@@ -184,7 +196,7 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
   hATTPCTime->Draw("same p");
   cvsTime->cd(2);
   hTimeDiff->Draw();
-  return;
+  //  return;
   
   
   int nEvents = t->GetEntries();
@@ -193,11 +205,11 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
   for ( int iev = 0 ; iev <nEvents ; iev++) {
     t->GetEntry(iev);
     hNhits->Fill(nhits);
+    tBdc->GetEntry(index_attpc_to_bdc[iev]);
     
     double attpc_time = evtTime - ATTPC_evt0_time ; 
-    cout << " AT-TPC event time = " << attpc_time << endl; 
-    
-    
+    //    cout << " AT-TPC event time = " << attpc_time << endl; 
+
     
     hTimeGrid->Reset();
     hAdcGrid->Reset();
@@ -205,14 +217,14 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
     hAdc->Reset();
     for ( int ihit = 0 ; ihit <nhits ; ihit++)  {
       if ( timeTree[ihit] < 0 ) continue;
-
-
+      
+      
       hAdc->    SetBinContent(  xId[ihit]+1, yId[ihit]+1, adcTree[ihit] ) ; // micro seconds
       hAdcGrid->SetBinContent( xId[ihit]+1, yId[ihit]+1,     adcTree[ihit] ) ; // micro seconds
-
+      
       hTime->    SetBinContent(  xId[ihit]+1, yId[ihit]+1, timeTree[ihit] * 0.020) ; // micro seconds
       hTimeGrid->SetBinContent(  xId[ihit]+1, yId[ihit]+1,     timeTree[ihit] * 0.020) ; // micro seconds 
-
+      
       
       
     }
@@ -229,6 +241,29 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
 	py[nClus] = iy * 12.5 ;
 	ptime[nClus] = hResultTime->GetBinContent(iy+1);
 	nClus++; 
+
+	if (index_attpc_to_bdc[iev] == -1)
+	  cout << " BDC not triggered" << endl;
+	else {
+	  if ( (trckNumY==1) && (trckNumX==1)) {
+	    // The aY position is  py[nClus]
+	    double bZ = aY_to_bZ(py[nClus]);
+	    //      bdc_z = Ygrad[0] * bdc_y + Yc[0] ;
+	    double bY = (bZ - Yc[0])/Ygrad[0];
+	    double aX = bY_to_aX(bY);
+	    cout << " cluster x = " << px[nClus] << ",    BDC ref = " << aX << ",   diff = " << px[nClus]-aX << endl;
+	    
+	    // double bY_to_aX ( double bY);
+	    // double bX_to_aZ ( double bX);
+	    // double bZ_to_aY ( double bZ);
+	    
+	    //      bdc_z = Ygrad[0] * bdc_y + Yc[0] ;
+	    //      float bdc_y = (bdc_z - Yc[0]) / Ygrad[0] ;
+	  }
+	  
+	}
+	
+	
       }
     }
     if ( nClus <3 )
@@ -403,3 +438,23 @@ void doCluster( TH2F* hAdc, TH2F* hTime, float seedThr, TH1F* timediff, TH1F* hR
   
 }
 */
+
+double bY_to_aX ( double bY) {
+  return bY - (114.5 - 48.4375);   // bdc y = 114.5 -> attpc x = 48.4375
+}
+double bX_to_aZ ( double bX) {
+  return  -bX + 171 ; 
+}
+double bZ_to_aY ( double bZ) {
+  return  bZ  - (454 - 43.75) ;
+}
+
+double aX_to_bY ( double aX) {
+  return aX + (114.5 - 48.4375);   // bdc y = 114.5 -> attpc x = 48.4375
+}
+double aZ_to_bX ( double aZ) {
+  return -aZ + 171 ;
+}
+double aY_to_bZ ( double aY) {
+  return  aY  + (454 - 43.75) ;
+}
