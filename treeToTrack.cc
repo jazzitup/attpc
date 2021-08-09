@@ -139,52 +139,66 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
   
   TH1F* hATTPCTime = new TH1F("hattpctime",";AT-TPC time (s);", 1000,0,100000);
   TH1F* hBDCTime = (TH1F*)hATTPCTime->Clone("hbdctime");
+  TH1F* hTimeDiff = new TH1F("hattpctime",";AT-TPC time (s);", 2000,-20,20);
 
   const int maxEvents = 10000;
-  int index_attpc_to_bdc[maxEvents];
-  for ( int i=0; i<maxEvents; i++)   index_attpc_to_bdc[i] = -1;
+  double atime_arr[maxEvents]; // AT-TPC time array
+  double btime_arr[maxEvents]; // BDC time array
+  int index_attpc_to_bdc[maxEvents];        
   
   if (add_BDC_Info)  { 
-    cout << "BDC timing" << endl;
+    for ( int iev = 0 ; iev <t->GetEntries() ; iev++) {
+      t->GetEntry(iev);
+      atime_arr[iev] =  evtTime - ATTPC_evt0_time;
+    }
     for ( int jev =0  ; jev < tBdc->GetEntries() ; jev++) {
       tBdc->GetEntry(jev);
-      double bdc_time  = dur_secDif - BDC_evt0_time ;
-      //       cout << " EvtTime_bdc = " << bdc_time << endl;
-      hBDCTime->Fill ( bdc_time);
+      btime_arr[jev]  = dur_secDif - BDC_evt0_time ;
     }
   }
-  
+
   for ( int iev = 0 ; iev <t->GetEntries() ; iev++) {
-    t->GetEntry(iev);
-    double attpc_time = evtTime - ATTPC_evt0_time ;
-    hATTPCTime->Fill ( attpc_time);     
+    double minDiff = 10;
+      int matchedIndex =  -1;
+      for ( int jev =0  ; jev < tBdc->GetEntries() ; jev++) {
+	if ( fabs(atime_arr[iev] - btime_arr[jev]) < fabs(minDiff) ) {
+	  minDiff = atime_arr[iev] - btime_arr[jev] ;
+	  matchedIndex = jev; 
+	}
+      }
+      index_attpc_to_bdc[iev] = matchedIndex ;
+      hTimeDiff->Fill( minDiff);
+      cout << " attpc_time = " << atime_arr[iev] << "    ";
+      cout << " bdc_time = " << btime_arr[ index_attpc_to_bdc[iev] ]  <<"    diff = " << minDiff  << endl;
   }
   
   
-
-   
-   
-   TCanvas* cvsTime = new TCanvas("cvstime","",400,400);
-   hATTPCTime->SetLineColor(2);
-   hATTPCTime->SetMarkerColor(2);
-   hBDCTime->Draw();
-   hATTPCTime->Draw("same p");
-   
-     return;
-   
-   
-   int nEvents = t->GetEntries();
-   //  for ( int iev = 450 ; iev <452 ; iev++) {
-   //  for ( int iev = 450 ; iev <nEvents ; iev++) {
-   for ( int iev = 0 ; iev <nEvents ; iev++) {
-     t->GetEntry(iev);
+  
+  
+  TCanvas* cvsTime = new TCanvas("cvstime","",800,400);
+  cvsTime->Divide(2,1);
+  cvsTime->cd(1);
+  hATTPCTime->SetLineColor(2);
+  hATTPCTime->SetMarkerColor(2);
+  hBDCTime->Draw();
+  hATTPCTime->Draw("same p");
+  cvsTime->cd(2);
+  hTimeDiff->Draw();
+  return;
+  
+  
+  int nEvents = t->GetEntries();
+  //  for ( int iev = 450 ; iev <452 ; iev++) {
+  //  for ( int iev = 450 ; iev <nEvents ; iev++) {
+  for ( int iev = 0 ; iev <nEvents ; iev++) {
+    t->GetEntry(iev);
     hNhits->Fill(nhits);
-
+    
     double attpc_time = evtTime - ATTPC_evt0_time ; 
     cout << " AT-TPC event time = " << attpc_time << endl; 
     
-     
-
+    
+    
     hTimeGrid->Reset();
     hAdcGrid->Reset();
     hTime->Reset();
