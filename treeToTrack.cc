@@ -137,26 +137,53 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
   TF1 * fLinTime = new TF1("fLinTime", "[0]+[1]*x", 0, 100); // as a function of Y
   
   
-  int nEvents = t->GetEntries();
-  //  for ( int iev = 450 ; iev <452 ; iev++) {
-  //  for ( int iev = 450 ; iev <nEvents ; iev++) {
-  for ( int iev = 0 ; iev <nEvents ; iev++) {
+  TH1F* hATTPCTime = new TH1F("hattpctime",";AT-TPC time (s);", 1000,0,100000);
+  TH1F* hBDCTime = (TH1F*)hATTPCTime->Clone("hbdctime");
+
+  const int maxEvents = 10000;
+  int index_attpc_to_bdc[maxEvents];
+  for ( int i=0; i<maxEvents; i++)   index_attpc_to_bdc[i] = -1;
+  
+  if (add_BDC_Info)  { 
+    cout << "BDC timing" << endl;
+    for ( int jev =0  ; jev < tBdc->GetEntries() ; jev++) {
+      tBdc->GetEntry(jev);
+      double bdc_time  = dur_secDif - BDC_evt0_time ;
+      //       cout << " EvtTime_bdc = " << bdc_time << endl;
+      hBDCTime->Fill ( bdc_time);
+    }
+  }
+  
+  for ( int iev = 0 ; iev <t->GetEntries() ; iev++) {
     t->GetEntry(iev);
+    double attpc_time = evtTime - ATTPC_evt0_time ;
+    hATTPCTime->Fill ( attpc_time);     
+  }
+  
+  
+
+   
+   
+   TCanvas* cvsTime = new TCanvas("cvstime","",400,400);
+   hATTPCTime->SetLineColor(2);
+   hATTPCTime->SetMarkerColor(2);
+   hBDCTime->Draw();
+   hATTPCTime->Draw("same p");
+   
+     return;
+   
+   
+   int nEvents = t->GetEntries();
+   //  for ( int iev = 450 ; iev <452 ; iev++) {
+   //  for ( int iev = 450 ; iev <nEvents ; iev++) {
+   for ( int iev = 0 ; iev <nEvents ; iev++) {
+     t->GetEntry(iev);
     hNhits->Fill(nhits);
 
     double attpc_time = evtTime - ATTPC_evt0_time ; 
     cout << " AT-TPC event time = " << attpc_time << endl; 
     
-    if (add_BDC_Info)  { 
-      // Match with BDC track! 
-      for ( int jev =0  ; jev < tBdc->GetEntries() ; jev++) {
-	tBdc->GetEntry(jev);
-	double bdc_time  = dur_secDif - BDC_evt0_time ;
-	cout << " EvtTime_bdc = " << bdc_time << endl;
-      }
-      
-    }
-    
+     
 
     hTimeGrid->Reset();
     hAdcGrid->Reset();
