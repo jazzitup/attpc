@@ -103,7 +103,7 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
    
    double BDC_evt0_time = 0; 
    if (add_BDC_Info)  {
-     tBdc->Add("BDCTrackingData/bdcAnaTrack_Data_SJ_Run_520_selecttrack_20210808_v3.root");
+     tBdc->Add("BDCTrackingData/bdcAnaTrack_Data_SJ_Run_520_selecttrack_20210810_v5.root");
      tBdc->SetBranchAddress("Event", &Event, &b_Event);
      tBdc->SetBranchAddress("trckNumX", &trckNumX, &b_trckNumX);
      tBdc->SetBranchAddress("trckNumY", &trckNumY, &b_trckNumY);
@@ -199,7 +199,7 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
   //  return;
 
   TH2D* ax_bx = new TH2D("ax_bx",";ax;bx",100,-100,100,100,-100,100);
-  TH1D* bz = new TH1D("bz",";ax;bx",1000,-2000,2000);
+  TH1D* axRes = new TH1D("axRes","",30,-4,4);
   
   int nEvents = t->GetEntries();
   //  for ( int iev = 450 ; iev <452 ; iev++) {
@@ -257,7 +257,8 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
 	    double aX = bY_to_aX(bY);
 	    //	    cout << " cluster x = " << px[nClus] << ",    BDC ref = " << aX << ",   diff = " << px[nClus]-aX << endl;
 	    ax_bx->Fill( aX, px[nClus]);
-	    bz->Fill(bZ);
+	    if ( px[nClus] > 40 && px[nClus] < 45 ) 
+	      axRes->Fill ( px[nClus] - aX );
 	    // double bY_to_aX ( double bY);
 	    // double bX_to_aZ ( double bX);
 	    // double bZ_to_aY ( double bZ);
@@ -349,7 +350,8 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
   cvs4->cd(1);
   ax_bx->Draw("colz");
   cvs4->cd(2);
-  bz->Draw();
+  axRes->Draw();
+  axRes->Fit("gaus");
 }
 
 
@@ -451,20 +453,20 @@ void doCluster( TH2F* hAdc, TH2F* hTime, float seedThr, TH1F* timediff, TH1F* hR
 */
 
 double bY_to_aX ( double bY) {
-  return bY - (114.5 - 48.4375);   // bdc y = 114.5 -> attpc x = 48.4375
-}
+  return bY - (97 - 48.4375);   // bdc y = 97 -> attpc x = 48.4375
+}                                                                       // before : 270-155.5 = 114.5 | after : 270-173 = 97
 double bX_to_aZ ( double bX) {
-  return  -bX + 171 ; 
+  return  -bX + 173.5 ;                         // before : 171, after : 171+2.5 = 173.5
 }
 double bZ_to_aY ( double bZ) {
   return  bZ  - (454 - 43.75) ;
 }
 
 double aX_to_bY ( double aX) {
-  return aX + (114.5 - 48.4375);   // bdc y = 114.5 -> attpc x = 48.4375
+  return aX + (97 - 48.4375);   // bdc y = 97 -> attpc x = 48.4375
 }
 double aZ_to_bX ( double aZ) {
-  return -aZ + 171 ;
+  return -aZ + 173.5 ;
 }
 double aY_to_bZ ( double aY) {
   return  aY  + (454 - 43.75) ;
