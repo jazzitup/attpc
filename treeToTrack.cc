@@ -197,7 +197,9 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
   cvsTime->cd(2);
   hTimeDiff->Draw();
   //  return;
-  
+
+  TH2D* ax_bx = new TH2D("ax_bx",";ax;bx",100,-100,100,100,-100,100);
+  TH1D* bz = new TH1D("bz",";ax;bx",1000,-2000,2000);
   
   int nEvents = t->GetEntries();
   //  for ( int iev = 450 ; iev <452 ; iev++) {
@@ -240,19 +242,22 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
 	px[nClus] = hResultCharge->GetBinContent(iy+1) * 3.125; 
 	py[nClus] = iy * 12.5 ;
 	ptime[nClus] = hResultTime->GetBinContent(iy+1);
-	nClus++; 
 
 	if (index_attpc_to_bdc[iev] == -1)
 	  cout << " BDC not triggered" << endl;
 	else {
 	  if ( (trckNumY==1) && (trckNumX==1)) {
 	    // The aY position is  py[nClus]
+
 	    double bZ = aY_to_bZ(py[nClus]);
+
 	    //      bdc_z = Ygrad[0] * bdc_y + Yc[0] ;
+	    //        // z = Ygrad[ix] *y + Yc ;
 	    double bY = (bZ - Yc[0])/Ygrad[0];
 	    double aX = bY_to_aX(bY);
-	    cout << " cluster x = " << px[nClus] << ",    BDC ref = " << aX << ",   diff = " << px[nClus]-aX << endl;
-	    
+	    //	    cout << " cluster x = " << px[nClus] << ",    BDC ref = " << aX << ",   diff = " << px[nClus]-aX << endl;
+	    ax_bx->Fill( aX, px[nClus]);
+	    bz->Fill(bZ);
 	    // double bY_to_aX ( double bY);
 	    // double bX_to_aZ ( double bX);
 	    // double bZ_to_aY ( double bZ);
@@ -261,9 +266,9 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
 	    //      float bdc_y = (bdc_z - Yc[0]) / Ygrad[0] ;
 	  }
 	  
-	}
+	}	
 	
-	
+	nClus++; 	
       }
     }
     if ( nClus <3 )
@@ -338,7 +343,13 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
   hThetaYZ->SetStats(1);
   hThetaYZ->Draw();
   cout << "hThetaXY->Integral()=" << hThetaXY->Integral() << endl;
-  
+
+  TCanvas* cvs4 = new TCanvas("cvs4","",800,400);
+  cvs4->Divide(2,1);
+  cvs4->cd(1);
+  ax_bx->Draw("colz");
+  cvs4->cd(2);
+  bz->Draw();
 }
 
 

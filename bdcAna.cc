@@ -79,7 +79,7 @@ void bdcAna( int numEvents = -1 ) {  // # of events to be analyzed.  If -1, we a
    int countsX = 0 ; 
    int countsY = 0 ;
    //   float zCenter = 614;
-   float zCenter = 454;
+   float zCenter = 900; //454;
    TH1D* hXCenter = new TH1D("hXCenter",Form(";x when z = %d (mm)",(int)zCenter),40,0,200);
    TH1D* hYCenter = new TH1D("hYCenter",Form(";y when z = %d (mm)",(int)zCenter),40,0,200);
    TH1D* hXgrad = new TH1D("hXgrad",";dx/dz;",50,-.3,.3);
