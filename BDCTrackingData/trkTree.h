@@ -1,8 +1,8 @@
 //////////////////////////////////////////////////////////
 // This class has been automatically generated on
-// Mon Aug  9 10:01:57 2021 by ROOT version 6.22/06
+// Tue Aug 10 21:11:14 2021 by ROOT version 6.20/04
 // from TTree trkTree/BDC Track Tree
-// found on file: bdcAnaTrack_Data_SJ_Run_520_selecttrack_20210808_v3.root
+// found on file: bdcAnaTrack_Data_SJ_Run_531_selecttrack_20210810_v5.root
 //////////////////////////////////////////////////////////
 
 #ifndef trkTree_h
@@ -29,6 +29,10 @@ public :
    Double_t        Ygrad[1];   //[trkNumY]
    Double_t        Xc[1];   //[trkNumX]
    Double_t        Yc[1];   //[trkNumY]
+   Double_t        Zgrad_X[1];   //[trkNumX]
+   Double_t        Zgrad_Y[1];   //[trkNumY]
+   Double_t        Zc_X[1];   //[trkNumX]
+   Double_t        Zc_Y[1];   //[trkNumY]
    Int_t           EvtTime;
    Double_t        dur_sec;
    Int_t           EvtTimeDif;
@@ -43,6 +47,10 @@ public :
    TBranch        *b_Ygrad;   //!
    TBranch        *b_Xc;   //!
    TBranch        *b_Yc;   //!
+   TBranch        *b_Zgrad_X;   //!
+   TBranch        *b_Zgrad_Y;   //!
+   TBranch        *b_Zc_X;   //!
+   TBranch        *b_Zc_Y;   //!
    TBranch        *b_EvtTime;   //!
    TBranch        *b_dur_sec;   //!
    TBranch        *b_EvtTimeDif;   //!
@@ -68,9 +76,9 @@ trkTree::trkTree(TTree *tree) : fChain(0)
 // if parameter tree is not specified (or zero), connect the file
 // used to generate this class and read the Tree.
    if (tree == 0) {
-      TFile *f = (TFile*)gROOT->GetListOfFiles()->FindObject("bdcAnaTrack_Data_SJ_Run_520_selecttrack_20210808_v3.root");
+      TFile *f = (TFile*)gROOT->GetListOfFiles()->FindObject("bdcAnaTrack_Data_SJ_Run_531_selecttrack_20210810_v5.root");
       if (!f || !f->IsOpen()) {
-         f = new TFile("bdcAnaTrack_Data_SJ_Run_520_selecttrack_20210808_v3.root");
+         f = new TFile("bdcAnaTrack_Data_SJ_Run_531_selecttrack_20210810_v5.root");
       }
       f->GetObject("trkTree",tree);
 
@@ -126,6 +134,10 @@ void trkTree::Init(TTree *tree)
    fChain->SetBranchAddress("Ygrad", Ygrad, &b_Ygrad);
    fChain->SetBranchAddress("Xc", Xc, &b_Xc);
    fChain->SetBranchAddress("Yc", Yc, &b_Yc);
+   fChain->SetBranchAddress("Zgrad_X", Zgrad_X, &b_Zgrad_X);
+   fChain->SetBranchAddress("Zgrad_Y", Zgrad_Y, &b_Zgrad_Y);
+   fChain->SetBranchAddress("Zc_X", Zc_X, &b_Zc_X);
+   fChain->SetBranchAddress("Zc_Y", Zc_Y, &b_Zc_Y);
    fChain->SetBranchAddress("EvtTime", &EvtTime, &b_EvtTime);
    fChain->SetBranchAddress("dur_sec", &dur_sec, &b_dur_sec);
    fChain->SetBranchAddress("EvtTimeDif", &EvtTimeDif, &b_EvtTimeDif);
