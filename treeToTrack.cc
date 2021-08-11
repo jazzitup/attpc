@@ -154,7 +154,7 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
 
   TH1F* hThetaXY = new TH1F("hThetaXY","; Angle in XY (BDC) plane (degree);",50,-50,50); 
   TH1F* hThetaYZ = (TH1F*)hThetaXY->Clone("hThetaYZ");
-  hThetaYZ->SetXTitle("Angle in YZ (BDC) plane  (degree);",50,-50,50);
+  hThetaYZ->SetXTitle("Angle in YZ (BDC) plane  (degree)");
   
   TGraph* gResultXY ;
   TGraph* gResultYX ;//  x와 y를 바꾼 것.   피팅할 때는 이것이 더 편함. 
@@ -194,6 +194,7 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
       }
     }
     index_attpc_to_bdc[iev] = matchedIndex ;
+    cout << "minDiff = " << minDiff << endl;
     hTimeDiff->Fill( minDiff);
     //      cout << " attpc_time = " << atime_arr[iev] << "    ";
     //      cout << " bdc_time = " << btime_arr[ index_attpc_to_bdc[iev] ]  <<"    diff = " << minDiff  << endl;
@@ -202,16 +203,6 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
   
   
   
-  TCanvas* cvsTime = new TCanvas("cvstime","",800,400);
-  cvsTime->Divide(2,1);
-  cvsTime->cd(1);
-  hATTPCTime->SetLineColor(2);
-  hATTPCTime->SetMarkerColor(2);
-  hBDCTime->Draw();
-  hATTPCTime->Draw("same p");
-  cvsTime->cd(2);
-  hTimeDiff->Draw();
-  //  return;
 
   TH2D* ax_bx = new TH2D("ax_bx",";ax;bx",100,-100,100,100,-100,100);
   TH1D* axRes = new TH1D("axRes","",30,-4,4);
@@ -381,6 +372,18 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
   TH1D *htimeProf = (TProfile*)htime_z->ProfileX()->ProjectionX();
   htimeProf->Draw();
   htimeProf->Fit("pol1","M","",2,5);
+
+
+  TCanvas* cvsTime = new TCanvas("cvstime","",800,400);
+  cvsTime->Divide(2,1);
+  cvsTime->cd(1);
+  hATTPCTime->SetLineColor(2);
+  hATTPCTime->SetMarkerColor(2);
+  hBDCTime->Draw();
+  hATTPCTime->Draw("same p");
+  cvsTime->cd(2);
+  hTimeDiff->Draw();
+
 }
 
 
