@@ -50,7 +50,7 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
   
   float seedThr = 100;
   
-  float  vDrift = 48 ; // in mm/microsecond  <= This must be updated! 
+  float  vDrift = 55 ; // in mm/microsecond  <= This must be updated! 
   TFile* fileIn = new TFile("./treeOfHits_muon_v3_run1.root");
   //  TFile* fileIn = new TFile("./treeOfHits_muon_run1.root");
 
@@ -152,8 +152,9 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
   TH1F* hResultCharge = new TH1F("hist_chg"," ; yid ; x_mean",8 , -.5, 7.5);
   TH1F* hResultTime = new TH1F("hist_time"," ; yid ; Timing (#mus)",8 , -.5, 7.5);
 
-  TH1F* hThetaXY = new TH1F("hThetaXY","; Angle in XY plane (degree);",50,-50,50); 
+  TH1F* hThetaXY = new TH1F("hThetaXY","; Angle in XY (BDC) plane (degree);",50,-50,50); 
   TH1F* hThetaYZ = (TH1F*)hThetaXY->Clone("hThetaYZ");
+  hThetaYZ->SetXTitle("Angle in YZ (BDC) plane  (degree);",50,-50,50);
   
   TGraph* gResultXY ;
   TGraph* gResultYX ;//  x와 y를 바꾼 것.   피팅할 때는 이것이 더 편함. 
@@ -165,7 +166,7 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
   
   TH1F* hATTPCTime = new TH1F("hattpctime",";AT-TPC time (s);", 1000,0,100000);
   TH1F* hBDCTime = (TH1F*)hATTPCTime->Clone("hbdctime");
-  TH1F* hTimeDiff = new TH1F("hattpctime",";AT-TPC time (s);", 2000,-20,20);
+  TH1F* hTimeDiff = new TH1F("hattpctimediff",";AT-TPC time (s);", 2000,-20,20);
 
   const int maxEvents = 10000;
   double atime_arr[maxEvents]; // AT-TPC time array
@@ -185,17 +186,17 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
 
   for ( int iev = 0 ; iev <t->GetEntries() ; iev++) {
     double minDiff = 10;
-      int matchedIndex =  -1;
-      for ( int jev =0  ; jev < tBdc->GetEntries() ; jev++) {
-	if ( fabs(atime_arr[iev] - btime_arr[jev]) < fabs(minDiff) ) {
-	  minDiff = atime_arr[iev] - btime_arr[jev] ;
-	  matchedIndex = jev; 
-	}
+    int matchedIndex =  -1;
+    for ( int jev =0  ; jev < tBdc->GetEntries() ; jev++) {
+      if ( fabs(atime_arr[iev] - btime_arr[jev]) < fabs(minDiff) ) {
+	minDiff = atime_arr[iev] - btime_arr[jev] ;
+	matchedIndex = jev; 
       }
-      index_attpc_to_bdc[iev] = matchedIndex ;
-      hTimeDiff->Fill( minDiff);
-      //      cout << " attpc_time = " << atime_arr[iev] << "    ";
-      //      cout << " bdc_time = " << btime_arr[ index_attpc_to_bdc[iev] ]  <<"    diff = " << minDiff  << endl;
+    }
+    index_attpc_to_bdc[iev] = matchedIndex ;
+    hTimeDiff->Fill( minDiff);
+    //      cout << " attpc_time = " << atime_arr[iev] << "    ";
+    //      cout << " bdc_time = " << btime_arr[ index_attpc_to_bdc[iev] ]  <<"    diff = " << minDiff  << endl;
   }
   
   
@@ -248,7 +249,7 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
     }
     
     doCluster( hAdcGrid, hTimeGrid, seedThr, timediff, hResultCharge, hResultTime);
-    
+  
     int nClus=0;
     float px[8];
     float py[8];
@@ -270,7 +271,7 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
 	    //      bdc_z = Ygrad[0] * bdc_y + Yc[0] ;
 	    //        // z = Ygrad[ix] *y + Yc ;
 	    double bY = (bZ - Yc[0])/Ygrad[0];
-	    double bX = Zgrad_X[0] * bZ + Zc_X[0];
+	    double bX = (bZ - Xc[0])/Xgrad[0];
 	    double aX = bY_to_aX(bY);
 	    double aZ =  bX_to_aZ(bX);
 
