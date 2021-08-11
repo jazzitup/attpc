@@ -173,7 +173,7 @@ void grawToTree( int numEvents = -1, int runNumber = 1 ) {  // # of events to be
 	    for (int buckIdx = 1; buckIdx < 512; buckIdx++) {
 	      hSignal->SetBinContent(buckIdx, frame.GetADC(agetIdx, chanIdx, buckIdx));
 	    }
-	    if (frame.IsDeadChan(agetIdx, chanIdx)) continue;
+	    if (pMap.IsDeadChan(agetIdx, chanIdx)) continue;
 	    
 	    
 	    // Background estimation procedure: 
@@ -259,7 +259,7 @@ void grawToTree( int numEvents = -1, int runNumber = 1 ) {  // # of events to be
 	for (int agetIdx = 0; agetIdx < 4; agetIdx++) {
 	  for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
 	    if (frame.IsFPNChannel(chanIdx)) continue;
-	    if (frame.IsDeadChan(agetIdx, chanIdx)) continue;
+	    if (pMap.IsDeadChan(agetIdx, chanIdx)) continue;
 		    
 	    hSignalBsArr[agetIdx][chanIdx]->Reset();
 	    hSignalBsArr[agetIdx][chanIdx]->Add(hSignalArr[agetIdx][chanIdx]);
@@ -304,7 +304,7 @@ void grawToTree( int numEvents = -1, int runNumber = 1 ) {  // # of events to be
 	    htemp->DrawCopy();
 	    for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
 	      if (frame.IsFPNChannel(chanIdx)) continue;
-	      if (frame.IsDeadChan(agetIdx, chanIdx)) continue;
+	      if (pMap.IsDeadChan(agetIdx, chanIdx)) continue;
 	      hSignalArr[agetIdx][chanIdx]->Draw("same");
 	    }
 	    jumSun(0,0,512,0,2);
@@ -313,7 +313,7 @@ void grawToTree( int numEvents = -1, int runNumber = 1 ) {  // # of events to be
 	    htemp->Draw();
 	    for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
 	      if (frame.IsFPNChannel(chanIdx)) continue;
-	      if (frame.IsDeadChan(agetIdx, chanIdx)) continue;
+	      if (pMap.IsDeadChan(agetIdx, chanIdx)) continue;
 	      hSignalBsArr[agetIdx][chanIdx]->Draw("same hist");
 	    }
 	    jumSun(0,0,512,0,2);
@@ -330,7 +330,7 @@ void grawToTree( int numEvents = -1, int runNumber = 1 ) {  // # of events to be
 	for (int agetIdx = 0; agetIdx < 4; agetIdx++) {
 	  for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
 	    if (frame.IsFPNChannel(chanIdx)) continue;
-	    if (frame.IsDeadChan(agetIdx, chanIdx)) continue;
+	    if (pMap.IsDeadChan(agetIdx, chanIdx)) continue;
 	    
 	    hSignal->Reset();
 	    hSignal->Add(hSignalBsArr[agetIdx][chanIdx]);  // the histogram to be analyzed;
