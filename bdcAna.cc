@@ -109,7 +109,7 @@ void bdcAna( int numEvents = -1 ) {  // # of events to be analyzed.  If -1, we a
    int countsX = 0 ; 
    int countsY = 0 ;
    //   float zCenter = 614;
-   float zValue =  454; //aY_to_bZ ( 50) ;//454; //454;
+   float zValue =  454 ; //454; //aY_to_bZ ( 50) ;//454; //454;
    TH1D* hBx = new TH1D("hBx",Form(";BDC x when z = %d (mm)",(int)zValue),50,0,200);
    TH1D* hBy = new TH1D("hBy",Form(";BDC y when z = %d (mm)",(int)zValue),50,0,200);
    TH1D* hAx = new TH1D("hAx",Form(";ATTPC x when y = %d (mm)",(int)(bZ_to_aY(zValue))),50,0,200);
@@ -123,6 +123,7 @@ void bdcAna( int numEvents = -1 ) {  // # of events to be analyzed.  If -1, we a
    TH2D* hy2 = new TH2D("hy2","",20,0,200,20,-.3,.3);
       
 
+   cout << "===== Tracks ======"<< endl;
    for ( int jev = 0 ; jev <nBdcEvents ; jev++) {
      tBdc->GetEntry(jev);			  
      if ( (trckNumX == 1)&&(trckNumY==1)) 
@@ -133,6 +134,14 @@ void bdcAna( int numEvents = -1 ) {  // # of events to be analyzed.  If -1, we a
      if ( ! ((trckNumX == 1)&&(trckNumY==1)))
        continue;
        
+     // when aY = -100 mm 
+     float theAY = -100;
+     float theAZ;
+     float theAX;
+     float velAY =1.0;
+     float velAZ;
+     float velAX;
+     
 
      // XZ plane
      for ( int ix = 0 ; ix<trckNumX;  ix++) {
@@ -143,8 +152,11 @@ void bdcAna( int numEvents = -1 ) {  // # of events to be analyzed.  If -1, we a
        hAz->Fill ( bX_to_aZ (xValue) );
        hBXslope->Fill( Zgrad_X[ix]);
        hAZslope->Fill( -Zgrad_X[ix]);
-
        hx2->Fill ( xValue, Zgrad_X[ix]);
+       
+       theAZ = bX_to_aZ(xValue) + (-Zgrad_X[ix]) * ( theAY - bZ_to_aY (zValue) ) ;
+       velAZ =  -Zgrad_X[ix] ; 
+       
      }
      // YZ plane
      for ( int iy = 0 ; iy<trckNumY;  iy++) {
@@ -155,7 +167,29 @@ void bdcAna( int numEvents = -1 ) {  // # of events to be analyzed.  If -1, we a
        hBYslope->Fill( Zgrad_Y[iy]);
        hAXslope->Fill(  Zgrad_Y[iy]);
        hy2->Fill ( yValue, Zgrad_Y[iy]);
+
+       theAX = bY_to_aX(yValue) + (+Zgrad_Y[iy]) * ( theAY - bZ_to_aY (zValue) ) ;
+       velAX =  Zgrad_Y[iy];
      }
+     
+     float velNorm = sqrt (velAX*velAX + velAY*velAY + velAZ*velAZ);
+     velAX = velAX/velNorm;
+     velAY = velAY/velNorm;
+     velAZ = velAZ/velNorm;
+     
+     cout << theAX <<" " << theAY << " " << theAZ << "  " ;
+     cout << velAX <<" " << velAY << " " << velAZ << "  " << endl;
+     
+     // print out x,y,z when z = -1
+     //    double bY_to_aX ( double bY) {
+     //double bX_to_aZ ( double bX) {
+     //double bZ_to_aY ( double bZ) {
+     //     float theAZ = -10;
+     //     float ax = bY_to_aX ( Zgrad_Y[iy] * theZ + Zc_Y[iy] ) ;
+     //    float ay = bZ_to_aY ( Zgrad_Y[iy] * theZ + Zc_Y[iy] ) ;
+     
+     //     cout << " 
+     
    }
 			
 			
