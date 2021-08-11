@@ -51,7 +51,8 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
   float seedThr = 100;
   
   float  vDrift = 48 ; // in mm/microsecond  <= This must be updated! 
-  TFile* fileIn = new TFile("./treeOfHits_muon_run1.root");
+  TFile* fileIn = new TFile("./treeOfHits_muon_v3_run1.root");
+  //  TFile* fileIn = new TFile("./treeOfHits_muon_run1.root");
 
   TTree* t = (TTree*)fileIn->Get("hit");
   int evtId;
@@ -86,7 +87,12 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
   Double_t        Ygrad[10];   //[trckNumY]
   Double_t        Xc[10];   //[trckNumX]
   Double_t        Yc[10];   //[trckNumY]
-  //  Int_t           EvtTime_bdc;
+  Double_t        Zgrad_X[1];   //[trkNumX]
+  Double_t        Zgrad_Y[1];   //[trkNumY]
+  Double_t        Zc_X[1];   //[trkNumX]
+  Double_t        Zc_Y[1];   //[trkNumY]
+   
+   //  Int_t           EvtTime_bdc;
   //  Double_t        dur_sec;
   Double_t        dur_secDif;
    // List of branches
@@ -97,6 +103,14 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
    TBranch        *b_Ygrad;   //!
    TBranch        *b_Xc;   //!
    TBranch        *b_Yc;   //!
+   TBranch        *b_Zgrad_X;   //!
+   TBranch        *b_Zgrad_Y;   //!
+   TBranch        *b_Zc_X;   //!
+   TBranch        *b_Zc_Y;   //!
+   tBdc->SetBranchAddress("Zgrad_X", Zgrad_X, &b_Zgrad_X);
+   tBdc->SetBranchAddress("Zgrad_Y", Zgrad_Y, &b_Zgrad_Y);
+   tBdc->SetBranchAddress("Zc_X", Zc_X, &b_Zc_X);
+   tBdc->SetBranchAddress("Zc_Y", Zc_Y, &b_Zc_Y);
    TBranch        *b_EvtTime_bdc;   //!
    TBranch        *b_dur_sec;   //!
    TBranch        *b_dur_secDif;   //!
@@ -200,7 +214,9 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
 
   TH2D* ax_bx = new TH2D("ax_bx",";ax;bx",100,-100,100,100,-100,100);
   TH1D* axRes = new TH1D("axRes","",30,-4,4);
-  
+
+  TH2D* htime_z = new TH2D("htime_z",";TPC timing(#mus);z (mm) from BDC track ",50,0,7,50,20,160);
+
   int nEvents = t->GetEntries();
   //  for ( int iev = 450 ; iev <452 ; iev++) {
   //  for ( int iev = 450 ; iev <nEvents ; iev++) {
@@ -254,17 +270,20 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
 	    //      bdc_z = Ygrad[0] * bdc_y + Yc[0] ;
 	    //        // z = Ygrad[ix] *y + Yc ;
 	    double bY = (bZ - Yc[0])/Ygrad[0];
+	    double bX = Zgrad_X[0] * bZ + Zc_X[0];
 	    double aX = bY_to_aX(bY);
-	    //	    cout << " cluster x = " << px[nClus] << ",    BDC ref = " << aX << ",   diff = " << px[nClus]-aX << endl;
+	    double aZ =  bX_to_aZ(bX);
+
+	    
 	    ax_bx->Fill( aX, px[nClus]);
-	    if ( px[nClus] > 40 && px[nClus] < 45 ) 
+	    if ( px[nClus] > 30 && px[nClus] < 70 ) 
 	      axRes->Fill ( px[nClus] - aX );
 	    // double bY_to_aX ( double bY);
 	    // double bX_to_aZ ( double bX);
 	    // double bZ_to_aY ( double bZ);
-	    
-	    //      bdc_z = Ygrad[0] * bdc_y + Yc[0] ;
-	    //      float bdc_y = (bdc_z - Yc[0]) / Ygrad[0] ;
+	    //	    cout << "ptime[nClus] = " << ptime[nClus] << endl;
+	    //	    cout << "az = " << aZ << endl;
+	    htime_z->Fill ( ptime[nClus], aZ);
 	  }
 	  
 	}	
@@ -352,6 +371,15 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
   cvs4->cd(2);
   axRes->Draw();
   axRes->Fit("gaus");
+
+  TCanvas* cvs5 = new TCanvas("cvs5","",800,400);
+  cvs5->Divide(2,1);
+  cvs5->cd(1);
+  htime_z->Draw("colz");
+  cvs5->cd(2);
+  TH1D *htimeProf = (TProfile*)htime_z->ProfileX()->ProjectionX();
+  htimeProf->Draw();
+  htimeProf->Fit("pol1","M","",2,5);
 }
 
 
