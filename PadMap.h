@@ -1,30 +1,31 @@
 #ifndef __PadMap_h
 #define __PadMap_h
 
-#include <cmath>
-#include <map>
-#include <vector>
+#include <iostream>
 
 #include "TH2Poly.h"
 
 class PadMap {
 private:
-    std::map<std::pair<int, int>, std::pair<int, int>> padToAgetMap_;
-    std::map<std::pair<int, int>, std::pair<int, int>> agetToPadMap_;
+    const double dx_ = 2.625;
+    const double dy_ = 12.;
+    const double gap_ = 0.5;
+    int xId_[4][68];
+    int yId_[4][68];
+    int agetId_[32][8];
+    int chanId_[32][8];
 
 public:
     PadMap();
-    void TransformChannelToPad(int &agetIdx, int &chanIdx, int &colIdx, int &rowIdx);
-    int GetAgetIdx(int colIdx, int rowIdx);
-    int GetChanIdx(int colIdx, int rowIdx);
-    // int GetFPNChannelID(int channelID);
-    int GetColIdx(int agetIdx, int chanIdx);
-    int GetRowIdx(int agetIdx, int chanIdx);
-    float GetX(int agetIdx, int chanIdx);
-    float GetY(int agetIdx, int chanIdx);
-    int  GetXId(int agetIdx, int chanIdx);
-    int GetYId(int agetIdx, int chanIdx);
+    int GetAgetIdx(int xId, int yId);
+    int GetChanIdx(int xId, int yId);
+    int GetXId(int agetId, int chanId);
+    int GetYId(int agetId, int chanId);
+    double GetX(int agetId, int chanId);
+    double GetY(int agetId, int chanId);
     void BuildPad(TH2Poly *poly);
+    bool IsDeadPad(int xId, int yId);
+    bool IsEvenChan(int agetId, int chanId);
+    bool IsDeadChan(int agetId, int chanId);
 };
-
 #endif
