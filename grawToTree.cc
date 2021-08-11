@@ -105,6 +105,8 @@ void grawToTree( int numEvents = -1, int runNumber = 1 ) {  // # of events to be
     int yIdTree[256]; 
     float timeTree[256];
     float adcTree[256];
+    int agetIdTree[256]; 
+    int chIdTree[256]; 
 
     treeOut->Branch("eventId", &evtId, "eventId/I");
     treeOut->Branch("nhits", &nhits, "nhits/I");
@@ -113,6 +115,8 @@ void grawToTree( int numEvents = -1, int runNumber = 1 ) {  // # of events to be
     treeOut->Branch("y", yTree, "y[nhits]/F");
     treeOut->Branch("xid", xIdTree, "x[nhits]/I");
     treeOut->Branch("yid", yIdTree, "y[nhits]/I");
+    treeOut->Branch("aget", agetIdTree, "aget[nhits]/I");
+    treeOut->Branch("ch", chIdTree, "ch[nhits]/I");
     treeOut->Branch("time", timeTree, "time[nhits]/F");
     treeOut->Branch("adc", adcTree, "adc[nhits]/F");
     
@@ -351,8 +355,11 @@ void grawToTree( int numEvents = -1, int runNumber = 1 ) {  // # of events to be
 	      yTree[nhits] =  pMap.GetY(agetIdx, chanIdx);
 	      xIdTree[nhits] =  pMap.GetXId(agetIdx, chanIdx);
 	      yIdTree[nhits] =  pMap.GetYId(agetIdx, chanIdx);
+	      agetIdTree[nhits] = agetIdx;
+	      chIdTree[nhits] = chanIdx;
 	      adcTree[nhits] = realMaxVal; 
 	      timeTree[nhits] = timing; 
+	      
 	      nhits++;
 	      
 	      
