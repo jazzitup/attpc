@@ -43,10 +43,15 @@ void jumSun(double x1=0,double y1=0,double x2=1,double y2=1,int color=1, double 
 
 void grawToTree( int numEvents = -1, int runNumber = 1 ) {  // # of events to be analyzed.  If -1, we analyze everything
 
-  bool isDebugMode = 0 ;   // Save all supplemental ./figures 
-  bool doSaveFitPerf = 0 ; // Save all fit performance plots in ./fitResults directory
+  bool isDebugMode = 1 ;   // Save all supplemental ./figures 
+  bool doSaveFitPerf = 1 ; // Save all fit performance plots in ./fitResults directory
+  bool doCheckTiming = 1; 
   int threshold1 = 500 ; //   If the max ADC is smaller than threshold1, we assume that channel is background channel
 
+  float minBucket = 50; // 1 micro sec min
+  float maxBucket = 400; //6 micro sec max
+  float adcThr = 50;  // min ADC must be 50  after background subtraction
+		
   std::ifstream file1("/home/public/muon/run01/CoBo_2021-07-09T16h43m47.199s_0000.graw");
   std::ifstream fList;
   if (file1.good()) {
@@ -62,35 +67,40 @@ void grawToTree( int numEvents = -1, int runNumber = 1 ) {  // # of events to be
   auto htemp = (TH1F*)hSignal->Clone("htemp");  // will be used for temporary histogrmas
   TH1F* hSignalArr[4][68];  // Array for hSignal for all agets and channels
   TH1F* hSignalBsArr[4][68];  // Array for hSignal for all agets and channels after background subtraction (BS)
-    for (int agetIdx = 0; agetIdx < 4; agetIdx++) {
-      for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
-	hSignalArr[agetIdx][chanIdx] = (TH1F*)hSignal->Clone(Form("hSignal_agetId%d_chanId%d",agetIdx,chanIdx));
-	hSignalBsArr[agetIdx][chanIdx] = (TH1F*)hSignal->Clone(Form("hSignalBs_agetId%d_chanId%d",agetIdx,chanIdx));
-      }
+  for (int agetIdx = 0; agetIdx < 4; agetIdx++) {
+    for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
+      hSignalArr[agetIdx][chanIdx] = (TH1F*)hSignal->Clone(Form("hSignal_agetId%d_chanId%d",agetIdx,chanIdx));
+      hSignalBsArr[agetIdx][chanIdx] = (TH1F*)hSignal->Clone(Form("hSignalBs_agetId%d_chanId%d",agetIdx,chanIdx));
     }
+  }
+  
+  TH1F* hBkgTemplateOdd = (TH1F*)hSignal->Clone("hBkgTemplateOdd");
+  TH1F* hBkgTemplateEven = (TH1F*)hSignal->Clone("hBkgTemplateEven");
 
-    TH1F* hBkgTemplateOdd = (TH1F*)hSignal->Clone("hBkgTemplateOdd");
-    TH1F* hBkgTemplateEven = (TH1F*)hSignal->Clone("hBkgTemplateEven");
-	    
+
+  // Timing moniroting 
+  TH1F* hTimeTree = new TH1F("htimetree_eventbyevent",";timing (#mus);",100,0,10);
+  TH1F* hTimeTreeTotal = new TH1F("htimetree_total",";timing (#mus);",100,0,10);
     
-    TH1F *hBgkOddChanAget[4];
-    TH1F *hBgkEvenChanAget[4];
-    for (int agetIdx = 0; agetIdx < 4; agetIdx++) {
-        hBgkOddChanAget[agetIdx] = new TH1F(Form("hBgkOddChanAget%d", agetIdx), "", 511, 1, 512);
-        hBgkEvenChanAget[agetIdx] = new TH1F(Form("hBgkEvenChanAget%d", agetIdx), "", 511, 1, 512);
-    }
-    auto hPolyPad = new TH2Poly("hPolyPad", "", -3.5625, 100.4375, -8.25, 95.75);
-    auto hCharge = new TH1F("hCharge", "GEM_V = 310V;Pulse height(Channel);Counts", 150, 300, 1800);
-    auto fFit = new TF1("fFit", fitFunc, 1, 512, 4); // Only signals 
-    auto cvsSignal = new TCanvas("cvsSignal", "", 700, 700);
-    auto cvsPad = new TCanvas("cvsPad", "", 700, 700);
-
-    auto cvsAllChan = new TCanvas("cvsAllChan", "", 1000, 600);    // Histograms for all channels will be drawn here
-    cvsAllChan->Divide(4,2);    // for 4 aget channels x (Before and After background subtraction) 
-    auto cvsBkgChan = new TCanvas("cvsBkgChan", "", 800, 800);    // Histograms for all background channels (after normalization) will be drawn here
-    cvsBkgChan->Divide(2,3);    // for odd and even channels
-
     
+  TH1F *hBgkOddChanAget[4];
+  TH1F *hBgkEvenChanAget[4];
+  for (int agetIdx = 0; agetIdx < 4; agetIdx++) {
+    hBgkOddChanAget[agetIdx] = new TH1F(Form("hBgkOddChanAget%d", agetIdx), "", 511, 1, 512);
+    hBgkEvenChanAget[agetIdx] = new TH1F(Form("hBgkEvenChanAget%d", agetIdx), "", 511, 1, 512);
+  }
+  auto hPolyPad = new TH2Poly("hPolyPad", "", -3.5625, 100.4375, -8.25, 95.75);
+  auto hCharge = new TH1F("hCharge", "GEM_V = 310V;Pulse height(Channel);Counts", 150, 300, 1800);
+  auto fFit = new TF1("fFit", fitFunc, 1, 512, 4); // Only signals 
+  auto cvsSignal = new TCanvas("cvsSignal", "", 700, 700);
+  auto cvsPad = new TCanvas("cvsPad", "", 700, 700);
+  
+  auto cvsAllChan = new TCanvas("cvsAllChan", "", 1000, 600);    // Histograms for all channels will be drawn here
+  cvsAllChan->Divide(4,2);    // for 4 aget channels x (Before and After background subtraction) 
+  auto cvsBkgChan = new TCanvas("cvsBkgChan", "", 800, 800);    // Histograms for all background channels (after normalization) will be drawn here
+  cvsBkgChan->Divide(2,3);    // for odd and even channels
+  
+  TCanvas* cvs5 = new TCanvas("cvs5","",400,400);
     // Histograms for background monitoring:
     int nRelAdcBins= 300;
     TH2F *BkgProfileOdd = new TH2F("BkgProfileOdd",";time bucket; Normalized ADC",511,1,512,nRelAdcBins,0,nRelAdcBins); // 2d histogram for time x ADC 
@@ -335,6 +345,8 @@ void grawToTree( int numEvents = -1, int runNumber = 1 ) {  // # of events to be
 	// Now, let's fit the pulse shape!
 	
 	nhits = 0;
+	if (doCheckTiming) hTimeTree->Reset();
+	
 	for (int agetIdx = 0; agetIdx < 4; agetIdx++) {
 	  for (int chanIdx = 0; chanIdx < 68; chanIdx++) {
 	    if (frame.IsFPNChannel(chanIdx)) continue;
@@ -350,14 +362,22 @@ void grawToTree( int numEvents = -1, int runNumber = 1 ) {  // # of events to be
 	    double meanVal = hSignal->Integral(1, 50) / 50.;
 	    
 	    hSignal->SetAxisRange(-400, 4000, "Y");
-	    if (maxBin < 450 && maxBin > 50 && maxVal > 20) {
+	    if (( eventIdx == 8 ) && ( agetIdx == 1 ) && chanIdx==6){
+	      cout << "maxBin = " << maxBin << endl; 
+	      cout << "maxVal = " << maxVal << endl; 
+	    }
+	    
+	    
+	    
+	    
+	    if ( (maxBin > minBucket) && (maxBin < maxBucket) && (maxVal > adcThr) ) {
 	      isSignalCand = true;
 	      // Should set initial parameters for fair fits.  Otherwise, the previous channel result will bias it. 
 	      fFit->SetParameters(meanVal, maxVal * TMath::Power((0.05 * TMath::E()) / 3., 3) + 0.02, 0.05, maxBin - 50);
 	      //		  fFit->SetRange( max(maxBin-100,0) , maxBin + 100);
 	      hSignal->Fit("fFit", "Q");
 	      gStyle->SetOptFit(1111);
-	      
+		
 	      float realMaxVal =  fFit->GetMaximum(1,512); // aa * TMath::Power(3. / (cc * TMath::E()), 3);
 	      float timing = fFit->GetParameter(3);
 	      float xCoor = pMap.GetX(agetIdx, chanIdx);
@@ -374,7 +394,10 @@ void grawToTree( int numEvents = -1, int runNumber = 1 ) {  // # of events to be
 	      chIdTree[nhits] = chanIdx;
 	      adcTree[nhits] = realMaxVal; 
 	      timeTree[nhits] = timing; 
-	      
+	      if (doCheckTiming) {
+		hTimeTree->Fill(timing * 0.02); // in micro second
+		hTimeTreeTotal->Fill(timing * 0.02); // in micro second
+	      }
 	      nhits++;
 	      
 	      
@@ -387,7 +410,7 @@ void grawToTree( int numEvents = -1, int runNumber = 1 ) {  // # of events to be
 		l1->SetLineColor(1);
 		l1->SetLineStyle(1);
 		l1->AddEntry("", Form("Amplitude = %.f",(float)realMaxVal),"");
-		l1->AddEntry("", Form("Timing = %.1f", timing),"");
+		l1->AddEntry("", Form("Timing = %.1f (%.2f #mus)", timing, (float)(timing*0.02)),"");
 		l1->Draw();
 		cvsSignal->Update();
 		if (doSaveFitPerf)
@@ -396,7 +419,6 @@ void grawToTree( int numEvents = -1, int runNumber = 1 ) {  // # of events to be
 	    }   
 	  }
 	} 
-	
 	cvsPad->cd();
 	hPolyPad->SetAxisRange(0, 4000, "Z");
 	hPolyPad->Draw("colz");
@@ -405,10 +427,23 @@ void grawToTree( int numEvents = -1, int runNumber = 1 ) {  // # of events to be
 	cvsPad->SetLogz();
 	//	    cvsPad->SaveAs(Form("./track/event%05d.png", eventIdx));
 	
+	if (doCheckTiming) {
+	  cvs5->cd();
+	  hTimeTree->Draw();
+	  cvs5->SaveAs(Form("./fitResults/timingDist_%05d.png", eventIdx));
+	}
+	
+	
 	treeOut->Fill(); // fill the tree
 	countEvents++;
       }
       frame.CloseGrawFile();
+    }
+
+    if (doCheckTiming) {
+      TCanvas* cvs6 = new TCanvas("cvs6","",400,400);
+      hTimeTreeTotal->Draw();
+      cvs6->SaveAs("./fitResults/timingDist_AllEvts.png");
     }
     
     TFile* fout = new TFile(Form("treeOfHits_muon_run%d_test.root",runNumber),"recreate");
