@@ -50,7 +50,7 @@ void grawToTree( int numEvents = -1, int runNumber = 1 ) {  // # of events to be
   std::ifstream file1("/home/public/muon/run01/CoBo_2021-07-09T16h43m47.199s_0000.graw");
   std::ifstream fList;
   if (file1.good()) {
-    cout << "Use the list list" << endl;
+    cout << "Use the long list" << endl;
     fList =   std::ifstream(Form("fileList/files_muon_run%d.txt",runNumber)); // run 1 files
   }
   else {
