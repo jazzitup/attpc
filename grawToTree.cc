@@ -48,9 +48,15 @@ void grawToTree( int numEvents = -1, int runNumber = 1 ) {  // # of events to be
   int threshold1 = 500 ; //   If the max ADC is smaller than threshold1, we assume that channel is background channel
 
   std::ifstream file1("/home/public/muon/run01/CoBo_2021-07-09T16h43m47.199s_0000.graw");
-  std::ifstream fList(Form("fileList/files_muon_run%d.txt",runNumber)); // run 1 files 
-  
-  cout << " file1.good() = " <<  file1.good() << endl;
+  std::ifstream fList;
+  if (file1.good()) {
+    cout << "Use the list list" << endl;
+    fList =   std::ifstream(Form("fileList/files_muon_run%d.txt",runNumber)); // run 1 files
+  }
+  else {
+    cout << "Use the short list" << endl;
+    fList =   std::ifstream("fileList/short.txt");
+  }
   
   auto hSignal = new TH1F("hSignal", "", 511, 1, 512);
   auto htemp = (TH1F*)hSignal->Clone("htemp");  // will be used for temporary histogrmas
