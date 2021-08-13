@@ -51,7 +51,7 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
   float seedThr = 100;
   
   float  vDrift = 55 ; // in mm/microsecond  <= This must be updated! 
-  TFile* fileIn = new TFile("./treeOfHits_muon_v3_run1.root");
+  TFile* fileIn = new TFile("./treeOfHits_muon_v4_run1.root");
   //  TFile* fileIn = new TFile("./treeOfHits_muon_run1.root");
 
   TTree* t = (TTree*)fileIn->Get("hit");
@@ -87,10 +87,10 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
   Double_t        Ygrad[10];   //[trckNumY]
   Double_t        Xc[10];   //[trckNumX]
   Double_t        Yc[10];   //[trckNumY]
-  Double_t        Zgrad_X[1];   //[trkNumX]
-  Double_t        Zgrad_Y[1];   //[trkNumY]
-  Double_t        Zc_X[1];   //[trkNumX]
-  Double_t        Zc_Y[1];   //[trkNumY]
+  Double_t        Zgrad_X[10];   //[trkNumX]
+  Double_t        Zgrad_Y[10];   //[trkNumY]
+  Double_t        Zc_X[10];   //[trkNumX]
+  Double_t        Zc_Y[10];   //[trkNumY]
    
    //  Int_t           EvtTime_bdc;
   //  Double_t        dur_sec;
@@ -152,9 +152,16 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
   TH1F* hResultCharge = new TH1F("hist_chg"," ; yid ; x_mean",8 , -.5, 7.5);
   TH1F* hResultTime = new TH1F("hist_time"," ; yid ; Timing (#mus)",8 , -.5, 7.5);
 
-  TH1F* hThetaXY = new TH1F("hThetaXY","; Angle in XY (BDC) plane (degree);",50,-50,50); 
-  TH1F* hThetaYZ = (TH1F*)hThetaXY->Clone("hThetaYZ");
-  hThetaYZ->SetXTitle("Angle in YZ (BDC) plane  (degree)");
+  TH1F* hSlopeAXY = new TH1F("hslopeaxy","; dx/dy (measured by ATTPC);",50,-1,1); 
+  TH1F* hSlopeAZY = (TH1F*)hSlopeAXY->Clone("hSlopeAZY");
+  hSlopeAZY->SetXTitle("dz/dy (measured by ATTPC)");
+
+  TH1F* hSlopeBYZ = (TH1F*)hSlopeAXY->Clone("hSlopeBYZ");
+  hSlopeBYZ->SetXTitle("dy/dz (measured by BDC)");
+  TH1F* hSlopeBXZ = (TH1F*)hSlopeAXY->Clone("hSlopeBXZ");
+  hSlopeBXZ->SetXTitle("dx/dz (measured by BDC)");
+
+
   
   TGraph* gResultXY ;
   TGraph* gResultYX ;//  x와 y를 바꾼 것.   피팅할 때는 이것이 더 편함. 
@@ -207,7 +214,7 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
   TH2D* ax_bx = new TH2D("ax_bx",";ax;bx",100,-100,100,100,-100,100);
   TH1D* axRes = new TH1D("axRes","",30,-4,4);
 
-  TH2D* htime_z = new TH2D("htime_z",";TPC timing(#mus);z (mm) from BDC track ",50,0,7,50,20,160);
+  TH2D* htime_z = new TH2D("htime_z",";TPC timing(#mus);z (mm) from ATTOC pad ",50,0,7,50,20,160);
 
   int nEvents = t->GetEntries();
   //  for ( int iev = 450 ; iev <452 ; iev++) {
@@ -241,24 +248,25 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
     
     doCluster( hAdcGrid, hTimeGrid, seedThr, timediff, hResultCharge, hResultTime);
   
-    int nClus=0;
     float px[8];
     float py[8];
     float ptime[8];
+    int nClus=0;
     for ( int iy=0 ; iy<8 ; iy++) {
       if ( hResultCharge->GetBinContent(iy+1) > 0 ) {
 	px[nClus] = hResultCharge->GetBinContent(iy+1) * 3.125; 
 	py[nClus] = iy * 12.5 ;
 	ptime[nClus] = hResultTime->GetBinContent(iy+1);
-
+	
 	if (index_attpc_to_bdc[iev] == -1)
 	  cout << " BDC not triggered" << endl;
 	else {
+	  //	  if (trckNumX==1) {
 	  if ( (trckNumY==1) && (trckNumX==1)) {
 	    // The aY position is  py[nClus]
-
+	    
 	    double bZ = aY_to_bZ(py[nClus]);
-
+	    
 	    //      bdc_z = Ygrad[0] * bdc_y + Yc[0] ;
 	    //        // z = Ygrad[ix] *y + Yc ;
 	    double bY = (bZ - Yc[0])/Ygrad[0];
@@ -266,16 +274,18 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
 	    double aX = bY_to_aX(bY);
 	    double aZ =  bX_to_aZ(bX);
 
-	    
 	    ax_bx->Fill( aX, px[nClus]);
-	    if ( px[nClus] > 30 && px[nClus] < 70 ) 
+	    if ( px[nClus] >= 7*3.125 && px[nClus] < 16*3.125 )  {
 	      axRes->Fill ( px[nClus] - aX );
-	    // double bY_to_aX ( double bY);
-	    // double bX_to_aZ ( double bX);
-	    // double bZ_to_aY ( double bZ);
-	    //	    cout << "ptime[nClus] = " << ptime[nClus] << endl;
-	    //	    cout << "az = " << aZ << endl;
-	    htime_z->Fill ( ptime[nClus], aZ);
+	      // double bY_to_aX ( double bY);
+	      // double bX_to_aZ ( double bX);
+	      // double bZ_to_aY ( double bZ);
+	      //	    cout << "ptime[nClus] = " << ptime[nClus] << endl;
+	      //	    cout << "az = " << aZ << endl;
+	      htime_z->Fill ( ptime[nClus], aZ);
+	    }
+
+	    
 	  }
 	  
 	}	
@@ -283,6 +293,9 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
 	nClus++; 	
       }
     }
+    
+
+    
     if ( nClus <3 )
       continue;   // We don't need to fit this!!
   
@@ -293,7 +306,7 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
     //    fLinYX->SetParLimits(0,1,100);
     fLinYX->SetParLimits(1,-1,1);
     gResultYX->Fit(fLinYX, "M R Q");
-
+    
     gResultTime =  new TGraph(nClus,ptime,py);
     gResultTimeYX =  new TGraph(nClus,py,ptime);
 
@@ -301,13 +314,12 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
     gResultTimeYX->Fit(fLinTime, "M R Q");
 
     // angle :
-    float thetaXY = atan(fLinYX->GetParameter(1)) * 180 / 3.141592; 
-    hThetaXY->Fill(thetaXY);
-
-    float thetaYZ = atan(fLinTime->GetParameter(1)*vDrift) * 180 / 3.141592;  
-    hThetaYZ->Fill(thetaYZ);
-
-    
+    if ( (trckNumY==1) && (trckNumX==1)) {
+      hSlopeAXY->Fill(fLinYX->GetParameter(1));
+      hSlopeAZY->Fill ( fLinTime->GetParameter(1)*vDrift );
+      hSlopeBYZ->Fill( -Zgrad_X[0]);
+      hSlopeBXZ->Fill( Zgrad_Y[0]);
+    }
     if ( isDebugMode) {
       TCanvas* cvs1 = new TCanvas("cvs1", "", 800, 800);  
       cvs1->Divide(2,2);
@@ -344,17 +356,25 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
     timediff->Draw();
   }
 
-  TCanvas* cvs3 = new TCanvas("cvs3", "", 800, 400);
-  cvs3->Divide(2,1);
+  TCanvas* cvs3 = new TCanvas("cvs3", "", 800, 800);
+  cvs3->Divide(2,2);
   cvs3->cd(1);
-  hThetaXY->Fit("gaus");
-  hThetaXY->SetStats(1);
-  hThetaXY->Draw();
+  hSlopeAXY->Fit("gaus");
+  hSlopeAXY->SetStats(1);
+  hSlopeAXY->Draw();
   cvs3->cd(2);
-  hThetaYZ->Fit("gaus");
-  hThetaYZ->SetStats(1);
-  hThetaYZ->Draw();
-  cout << "hThetaXY->Integral()=" << hThetaXY->Integral() << endl;
+  hSlopeAZY->Fit("gaus");
+  hSlopeAZY->SetStats(1);
+  hSlopeAZY->Draw();
+  cvs3->cd(3);
+  hSlopeBYZ->Fit("gaus");
+  hSlopeBYZ->SetStats(1);
+  hSlopeBYZ->Draw();
+  cvs3->cd(4);
+  hSlopeBXZ->Fit("gaus");
+  hSlopeBXZ->SetStats(1);
+  hSlopeBXZ->Draw();
+
 
   TCanvas* cvs4 = new TCanvas("cvs4","",800,400);
   cvs4->Divide(2,1);
