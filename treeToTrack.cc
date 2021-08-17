@@ -152,26 +152,26 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
    
    TH2F* htemp = new TH2F("htemp",";Y (mm); x (mm)",100,0,100, 100,0,100);
    TH1F* hNhits = new TH1F("hNhits",";# of hits;",200,.5,199.5);
-  
-  TH2F* hAdc = new TH2F("hAdc",";x (mm);y (mm);ADC",   32, -.5*3.125, 31.5*3.125,   8, -.5*12.5, 7.5*12.5);
-  TH2F* hTime = new TH2F("hTime",";x (mm);y (mm);Time",32, -.5*3.125, 31.5*3.125,   8, -.5*12.5, 7.5*12.5);
-
-  TH2F* hAdcGrid = new TH2F("hAdcGrid",";xid;yid;ADC",   32,-.5,31.5,   8,-.5,7.5);
-  TH2F* hTimeGrid = new TH2F("hTimeGrid",";xid;yid;Time",32,-.5,31.5, 8,-.5,7.5);
-
+   
+   TH2F* hAdc = new TH2F("hAdc",";x (mm);y (mm);ADC",   32, -.5*3.125, 31.5*3.125,   8, -.5*12.5, 7.5*12.5);
+   TH2F* hTime = new TH2F("hTime",";x (mm);y (mm);Time",32, -.5*3.125, 31.5*3.125,   8, -.5*12.5, 7.5*12.5);
+   
+   TH2F* hAdcGrid = new TH2F("hAdcGrid",";xid;yid;ADC",   32,-.5,31.5,   8,-.5,7.5);
+   TH2F* hTimeGrid = new TH2F("hTimeGrid",";xid;yid;Time",32,-.5,31.5, 8,-.5,7.5);
+   
   TH1F* timediff = new TH1F("timediff","; #Deltat (#mus);",500,-10,10);
-
+  
   TH1F* hResultCharge = new TH1F("hist_chg"," ; yid ; x_mean",8 , -.5, 7.5);
   TH1F* hResultTime = new TH1F("hist_time"," ; yid ; Timing (#mus)",8 , -.5, 7.5);
 
-  TH1F* hSlopeAXY = new TH1F("hslopeaxy","; dx/dy (measured by ATTPC);",50,-1,1); 
+  TH1F* hSlopeAXY = new TH1F("hslopeAXY","; dx/dy (ATTPC coor.);",200,-1,1); 
   TH1F* hSlopeAZY = (TH1F*)hSlopeAXY->Clone("hSlopeAZY");
-  hSlopeAZY->SetXTitle("dz/dy (measured by ATTPC)");
+  hSlopeAZY->SetXTitle("dz/dy (ATTPC coor.)");
 
   TH1F* hSlopeBYZ = (TH1F*)hSlopeAXY->Clone("hSlopeBYZ");
-  hSlopeBYZ->SetXTitle("dy/dz (measured by BDC)");
+  hSlopeBYZ->SetXTitle("dy/dz (BDC coor.)");
   TH1F* hSlopeBXZ = (TH1F*)hSlopeAXY->Clone("hSlopeBXZ");
-  hSlopeBXZ->SetXTitle("dx/dz (measured by BDC)");
+  hSlopeBXZ->SetXTitle("dx/dz (BDC coor.)");
 
 
   
@@ -223,8 +223,8 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
   
   
 
-  TH2D* ax_bx = new TH2D("ax_bx",";x_{ATTPC} (mm) ;x_{BDC} (mm)",50,10,60,50,10,60);
-  TH1D* axResTot = new TH1D("axResTot","; x_{AT-TPC} - x_{BDC} (mm)",30,-10,10);
+  TH2D* ax_bx = new TH2D("ax_by",";x_{ATTPC coor.} (mm) ;y_{BDC coor.} (mm)",200,0,100,200,0,100);
+  TH1D* axResTot = new TH1D("axResTot","; x_{AT-TPC} - x_{BDC} (mm)",200,-20,20);
   TH1D* axRes[10];
   for ( int idy = 0 ; idy<8 ; idy++) {
     axRes[idy] = (TH1D*)axResTot->Clone(Form("axRes_%d",idy));
@@ -485,7 +485,7 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
   TF1 *thePol1Fit = (TF1*) htimeProf->GetFunction("pol1");
   float zeroPoint = thePol1Fit->GetParameter(0);
   float drftVel = thePol1Fit->GetParameter(1);
-
+  
   TLegend *l2 = new TLegend(0.2179929,0.2869624,0.879292,0.5455645,NULL,"brNDC");
   l2->SetHeader("Fit result");
   l2->AddEntry("",Form("v_{drift} = %.1f cm/#mus", drftVel*0.1),"");
@@ -506,6 +506,22 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
   cvsTime->cd(2);
   hTimeDiff->Draw();
 
+  TFile* fout = new TFile(Form("trackHistograms_run%d.root",runNumber),"recreate");
+  hSlopeAXY->Write();
+  hSlopeAZY->Write();
+  hSlopeBYZ->Write();
+  hSlopeBXZ->Write();
+  ax_bx->Write();
+  axResTot->Write();
+  for ( int iy = 0 ; iy<8 ; iy++) {
+    axRes[iy]->Write();
+  }
+  hxShift_y->Write();
+  hxRes_y->Write();
+  htime_z->Write();
+  htimeProf->Write();
+
+  fout->Close();
 }
 
 
