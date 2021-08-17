@@ -118,7 +118,7 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
    
    double BDC_evt0_time = 0; 
    if (add_BDC_Info)  {
-     tBdc->Add("BDCTrackingData/bdcAnaTrack_Data_SJ_Run_520_selecttrack_20210810_v5.root");
+     tBdc->Add("BDCTrackingData/bdcAnaTrack_Data_SJ_Run_520_selecttrack_20210810_v7.root");
      tBdc->SetBranchAddress("Event", &Event, &b_Event);
      tBdc->SetBranchAddress("trckNumX", &trckNumX, &b_trckNumX);
      tBdc->SetBranchAddress("trckNumY", &trckNumY, &b_trckNumY);
@@ -213,14 +213,20 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
   
 
   TH2D* ax_bx = new TH2D("ax_bx",";x_{ATTPC} (mm) ;x_{BDC} (mm)",50,10,60,50,10,60);
-  TH1D* axRes = new TH1D("axRes","; x_{AT-TPC} - x_{BDC} (mm)",30,-10,10);
-
+  TH1D* axResTot = new TH1D("axResTot","; x_{AT-TPC} - x_{BDC} (mm)",30,-10,10);
+  TH1D* axRes[10];
+  for ( int idy = 0 ; idy<8 ; idy++) {
+    axRes[idy] = (TH1D*)axResTot->Clone(Form("axRes_%d",idy));
+  }
+  TH1D* hxShift_y = new TH1D("hxShift_y","; y (index); <#Delta x> (mm)",8,-.5,7.5);
+  TH1D* hxRes_y = new TH1D("hxRes_y","; y (index); #Sigma(#Delta x) (mm)",8,-.5,7.5);
+  
   TH2D* htime_z = new TH2D("htime_z",";TPC hit time (#mus); z (mm) from BDC ref.  ",50,0,7,50,20,160);
 
   int nEvents = t->GetEntries();
-  //  for ( int iev = 450 ; iev <500 ; iev++) {
+  for ( int iev = 450 ; iev <500 ; iev++) {
   //  for ( int iev = 450 ; iev <nEvents ; iev++) {
-  for ( int iev = 0 ; iev <nEvents ; iev++) {
+    // for ( int iev = 0 ; iev <nEvents ; iev++) {
     t->GetEntry(iev);
     hNhits->Fill(nhits);
     tBdc->GetEntry(index_attpc_to_bdc[iev]);
@@ -276,9 +282,10 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
 	    double aZ =  bX_to_aZ(bX);
 
 	    //	    if ( px[nClus] >= 7*3.125 && px[nClus] < 16*3.125 )  {
-	    if ( (px[nClus] >= 25 && px[nClus] < 50)&&( iy>=2 && iy<=5  ) ) {
+	    if ( (px[nClus] >= 20 && px[nClus] < 50) ) { //&&( iy>=2 && iy<=5  ) ) {
 	      ax_bx->Fill( aX, px[nClus]);
-	      axRes->Fill ( px[nClus] - aX );
+	      axResTot->Fill ( px[nClus] - aX );
+	      axRes[iy]->Fill ( px[nClus] - aX );
 	      // double bY_to_aX ( double bY);
 	      // double bX_to_aZ ( double bX);
 	      // double bZ_to_aY ( double bZ);
@@ -390,9 +397,9 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
   cvs4->cd(1);
   ax_bx->Draw("colz");
   cvs4->cd(2);
-  axRes->Draw();
-  axRes->Fit("gaus");
-  TF1 *theGausFit = (TF1*) axRes->GetFunction("gaus");
+  axResTot->Draw();
+  axResTot->Fit("gaus");
+  TF1 *theGausFit = (TF1*) axResTot->GetFunction("gaus");
   float gausMean = theGausFit->GetParameter(1);
   float gausSig = theGausFit->GetParameter(2);
   TLegend *l3 = new TLegend(0.2179929,0.2869624,0.879292,0.5455645,NULL,"brNDC");
@@ -402,7 +409,51 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
   l3->SetBorderSize(0);
   l3->SetLineColor(1);
   l3->SetLineStyle(1);
-  l3->Draw();
+  l3->Draw(); 
+
+  TCanvas* cvs45 = new TCanvas("cvs45","",1200,600);
+  cvs45->Divide(4,2);
+  for ( int iy = 0 ; iy<8 ; iy++) {
+    cvs45->cd(iy+1);
+    axRes[iy]->Draw();
+    axRes[iy]->Fit("gaus");
+    TF1 *gausFit = (TF1*) axRes[iy]->GetFunction("gaus");
+    float gausMean = gausFit->GetParameter(1);
+    float gausMeanErr = gausFit->GetParError(1);
+    float gausSig = gausFit->GetParameter(2);
+    float gausSigErr = gausFit->GetParError(2);
+    hxShift_y->SetBinContent(iy+1, gausMean);
+    hxShift_y->SetBinError(iy+1, gausMeanErr);
+    hxRes_y->SetBinContent(iy+1, gausSig);
+    hxRes_y->SetBinError(iy+1, gausSigErr);
+    
+    /*    TLegend *l31 = new TLegend(0.2179929,0.2869624,0.879292,0.5455645,NULL,"brNDC");
+    l31->SetHeader("Fit result");
+    l31->AddEntry("",Form("Mean = %.1f mm", gausMean),"");
+    l31->AddEntry("",Form("#sigma = %.1f mm", gausSig),"");
+    l31->SetBorderSize(0);
+    l31->SetLineColor(1);
+    l31->SetLineStyle(1);
+    l31->Draw(); */
+  }
+
+  
+  TCanvas* cvs46 = new TCanvas("cvs46","",500,500);
+  hxShift_y->SetMarkerColor(1);
+  hxShift_y->SetLineColor(1);
+  hxRes_y->SetMarkerColor(2);
+  hxRes_y->SetLineColor(2);
+
+  hxShift_y->Draw();
+  hxRes_y->Draw("same");
+  TLegend *l31 = new TLegend(0.2179929,0.2869624,0.879292,0.5455645,NULL,"brNDC");
+  l31->SetHeader("t_{ATTPC} - t_{BDC}");
+  l31->AddEntry("hxShift_y","mean","pe");
+  l31->AddEntry("hxRes_y","resolution","pe");
+  l31->SetBorderSize(0);
+  l31->SetLineColor(1);
+  //  l31->SetLineStyle(1);
+  l31->Draw();
   
   TCanvas* cvs5 = new TCanvas("cvs5","",800,400);
   cvs5->Divide(2,1);
