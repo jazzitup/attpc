@@ -1,1 +1,1 @@
-CoBo_2021-07-11T14h24m22.855s_0000.graw
+/home/public/muon/run05/CoBo_2021-07-11T14h24m22.855s_0000.graw

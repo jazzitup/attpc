@@ -1,4 +1,4 @@
-CoBo_2021-07-11T18h55m36.108s_0000.graw
-CoBo_2021-07-11T18h55m36.108s_0001.graw
-CoBo_2021-07-11T18h55m36.108s_0002.graw
-CoBo_2021-07-11T18h55m36.108s_0003.graw
+/home/public/muon/run06/CoBo_2021-07-11T18h55m36.108s_0000.graw
+/home/public/muon/run06/CoBo_2021-07-11T18h55m36.108s_0001.graw
+/home/public/muon/run06/CoBo_2021-07-11T18h55m36.108s_0002.graw
+/home/public/muon/run06/CoBo_2021-07-11T18h55m36.108s_0003.graw
