@@ -235,9 +235,9 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
   TH2D* htime_z = new TH2D("htime_z",";TPC hit time (#mus); z (mm) from BDC ref.  ",50,0,7,50,20,160);
 
   int nEvents = t->GetEntries();
-  for ( int iev = 450 ; iev <500 ; iev++) {
+  //  for ( int iev = 450 ; iev <500 ; iev++) {
   //  for ( int iev = 450 ; iev <nEvents ; iev++) {
-    // for ( int iev = 0 ; iev <nEvents ; iev++) {
+  for ( int iev = 0 ; iev <nEvents ; iev++) {
     t->GetEntry(iev);
     hNhits->Fill(nhits);
     tBdc->GetEntry(index_attpc_to_bdc[iev]);
