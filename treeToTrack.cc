@@ -291,9 +291,9 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
 	    double bX = (bZ - Xc[0])/Xgrad[0];
 	    double aX = bY_to_aX(bY);
 	    double aZ =  bX_to_aZ(bX);
-
+	    
 	    //	    if ( px[nClus] >= 7*3.125 && px[nClus] < 16*3.125 )  {
-	    if ( (px[nClus] >= 20 && px[nClus] < 50) ) { //&&( iy>=2 && iy<=5  ) ) {
+	    if ( (px[nClus] >= 20 && px[nClus] < 50)  &&( iy==5	  ) )   {
 	      ax_bx->Fill( aX, px[nClus]);
 	      axResTot->Fill ( px[nClus] - aX );
 	      axRes[iy]->Fill ( px[nClus] - aX );
