@@ -45,13 +45,14 @@ double aY_to_bZ ( double bZ);
 
 
 
-void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1, we analyze everything
+void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to be analyzed.  If -1, we analyze everything
   
   
   float seedThr = 100;
   
   float  vDrift = 46 ; // in mm/microsecond  <= This must be updated! 
-  TFile* fileIn = new TFile("./treeOfHits_muon_v4_run1.root");
+  TString fname = Form("./treeFiles/v5/treeOfHits_muon_run%d.root",runNumber);
+  TFile* fileIn = new TFile(fname);
   //  TFile* fileIn = new TFile("./treeOfHits_muon_run1.root");
 
   float bucketInMicSec = 0.010;
@@ -118,7 +119,17 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
    
    double BDC_evt0_time = 0; 
    if (add_BDC_Info)  {
-     tBdc->Add("BDCTrackingData/bdcAnaTrack_Data_SJ_Run_520_selecttrack_20210810_v7.root");
+     if (runNumber == 1)       tBdc->Add("BDCTrackingData/bdcAnaTrack_Data_SJ_Run_520_selecttrack_20210810_v7.root");
+     if (runNumber == 2)       tBdc->Add("BDCTrackingData/bdcAnaTrack_Data_SJ_Run_530_selecttrack_20210810_v7.root");
+     if (runNumber == 3)       tBdc->Add("BDCTrackingData/bdcAnaTrack_Data_SJ_Run_531_selecttrack_20210810_v7.root");
+     if (runNumber == 4)       tBdc->Add("BDCTrackingData/bdcAnaTrack_Data_SJ_Run_532_selecttrack_20210810_v7.root");
+     if (runNumber == 5)       tBdc->Add("BDCTrackingData/bdcAnaTrack_Data_SJ_Run_533_selecttrack_20210810_v7.root");
+     if (runNumber == 6)       tBdc->Add("BDCTrackingData/bdcAnaTrack_Data_SJ_Run_534_selecttrack_20210810_v7.root");
+     if (runNumber == 7)       tBdc->Add("BDCTrackingData/bdcAnaTrack_Data_SJ_Run_550_selecttrack_20210810_v7.root");
+     if (runNumber == 8)       tBdc->Add("BDCTrackingData/bdcAnaTrack_Data_SJ_Run_560_selecttrack_20210810_v7.root");
+     if (runNumber == 9)       tBdc->Add("BDCTrackingData/bdcAnaTrack_Data_SJ_Run_561_selecttrack_20210810_v7.root");
+     
+     
      tBdc->SetBranchAddress("Event", &Event, &b_Event);
      tBdc->SetBranchAddress("trckNumX", &trckNumX, &b_trckNumX);
      tBdc->SetBranchAddress("trckNumY", &trckNumY, &b_trckNumY);
@@ -129,7 +140,7 @@ void treeToTrack( int numEvents = -1 ) {  // # of events to be analyzed.  If -1,
      //     tBdc->SetBranchAddress("EvtTime", &EvtTime_bdc, &b_EvtTime_bdc);
      //     tBdc->SetBranchAddress("dur_sec", &dur_sec, &b_dur_sec); 
      tBdc->SetBranchAddress("dur_secDif", &dur_secDif, &b_dur_secDif);
-	
+     
      tBdc->GetEntry(0);
      cout << " BDC reference time (str) = " << dur_secDif << endl;
      cout << " BDC reference time (sec) = " << BDC_evt0_time << endl; 

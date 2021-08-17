@@ -1,5 +1,5 @@
 /home/public/muon/run03/CoBo_2021-07-10T18h08m50.845s_0000.graw
-/home/public/muon/run03/CoBo_2021-07-10T18h08m50.845s_0001.graw  
-/home/public/muon/run03/CoBo_2021-07-10T18h08m50.845s_0002.graw  
-/home/public/muon/run03/CoBo_2021-07-10T18h08m50.845s_0003.graw  
+/home/public/muon/run03/CoBo_2021-07-10T18h08m50.845s_0001.graw
+/home/public/muon/run03/CoBo_2021-07-10T18h08m50.845s_0002.graw
+/home/public/muon/run03/CoBo_2021-07-10T18h08m50.845s_0003.graw
 /home/public/muon/run03/CoBo_2021-07-10T18h08m50.845s_0004.graw

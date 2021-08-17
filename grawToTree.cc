@@ -446,7 +446,7 @@ void grawToTree( int numEvents = -1, int runNumber = 1 ) {  // # of events to be
       cvs6->SaveAs("./fitResults/timingDist_AllEvts.png");
     }
     
-    TFile* fout = new TFile(Form("treeOfHits_muon_run%d_test.root",runNumber),"recreate");
+    TFile* fout = new TFile(Form("treeOfHits_muon_run%d.root",runNumber),"recreate");
     treeOut->Write();
     fout->Close();
     
