@@ -234,6 +234,9 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
   
   TH2D* htime_z = new TH2D("htime_z",";TPC hit time (#mus); z (mm) from BDC ref.  ",50,0,7,50,20,160);
 
+  TH1D* htemp_iy = new TH1D("htemp_iy","",100,-10,10);
+  
+  
   int nEvents = t->GetEntries();
   //  for ( int iev = 450 ; iev <500 ; iev++) {
   //  for ( int iev = 450 ; iev <nEvents ; iev++) {
@@ -293,10 +296,11 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
 	    double aZ =  bX_to_aZ(bX);
 	    
 	    //	    if ( px[nClus] >= 7*3.125 && px[nClus] < 16*3.125 )  {
-	    if ( (px[nClus] >= 20 && px[nClus] < 50)  &&( iy==5	  ) )   {
+	    if ( (px[nClus] >= 20 && px[nClus] < 50) )   {
 	      ax_bx->Fill( aX, px[nClus]);
 	      axResTot->Fill ( px[nClus] - aX );
 	      axRes[iy]->Fill ( px[nClus] - aX );
+	      //	      htemp_iy->Fill (iy);
 	      // double bY_to_aX ( double bY);
 	      // double bX_to_aZ ( double bX);
 	      // double bZ_to_aY ( double bZ);
@@ -376,6 +380,10 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
     timediff->Draw();
   }
 
+  TCanvas* cvs20 = new TCanvas("cvs20","",700,500);
+  htemp_iy->Draw();
+
+  
   TCanvas* cvs3 = new TCanvas("cvs3", "", 800, 800);
   cvs3->Divide(2,2);
   cvs3->cd(1);
