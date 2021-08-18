@@ -515,7 +515,7 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
   cvsTime->cd(2);
   hTimeDiff->Draw();
 
-  TFile* fout = new TFile(Form("treeFiles/v5_histograms/trackHistograms_run%d_test.root",runNumber),"recreate");
+  TFile* fout = new TFile(Form("treeFiles/v5_histograms/trackHistograms_run%d.root",runNumber),"recreate");
   hNhitPerCluster->Write();
   hSlopeAXY->Write();
   hSlopeAZY->Write();
