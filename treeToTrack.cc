@@ -21,7 +21,7 @@
 #include "TSystem.h"
 #include "TTree.h"
 
-void doCluster( TH2F* hAdc, TH2F* hTime, float seedThr, TH1F* timediff, TH1F* hResultAdc, TH1F* hResultTime, TH1F* hResultNhit, bool useGaus=false);
+void doCluster( TH2F* hAdc, TH2F* hTime, float seedThr, TH1F* timediff, TH1F* hResultX, TH1F* hResultTime, TH1F* hResultNhit, bool useGaus=false);
 bool isNearDeadPad( int idx, int idy);
 
 //float bdcTime_to_Sec ( int bdcTime); 
@@ -162,7 +162,7 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
    
   TH1F* timediff = new TH1F("timediff","; #Deltat (#mus);",500,-10,10);
   
-  TH1F* hResultAdc = new TH1F("hist_chg"," ; yid ; x_mean",8 , -.5, 7.5);
+  TH1F* hResultX = new TH1F("hist_chg"," ; yid ; x_mean",8 , -.5, 7.5);
   TH1F* hResultTime = new TH1F("hist_time"," ; yid ; Timing (#mus)",8 , -.5, 7.5);
   TH1F* hResultNhit = new TH1F("hist_nhits"," ; yid ; N_{hit}",8 , -.5, 7.5);
 
@@ -270,7 +270,7 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
       
     }
     
-    doCluster( hAdcGrid, hTimeGrid, seedThr, timediff, hResultAdc, hResultTime,hResultNhit, isUsingGaus);
+    doCluster( hAdcGrid, hTimeGrid, seedThr, timediff, hResultX, hResultTime,hResultNhit, isUsingGaus);
     // Fill hNhitPerCluster
     for ( int idy=0; idy<8 ; idy++) { 
       hNhitPerCluster->Fill (hResultNhit->GetBinContent(idy+1) );
@@ -282,9 +282,9 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
     float ptime[8];
     int nClus=0;
     for ( int iy=0 ; iy<8 ; iy++) {
-      //      if ( hResultAdc->GetBinContent(iy+1) > 0 ) {
-      if ( hResultNhit->GetBinContent(iy+1) >= 2 ) { // at least two hits
-	px[nClus] = hResultAdc->GetBinContent(iy+1) * 3.125; 
+      //      if ( hResultX->GetBinContent(iy+1) > 0 ) {
+      if ( hResultNhit->GetBinContent(iy+1) >= 3 ) { // at least three hits
+	px[nClus] = hResultX->GetBinContent(iy+1) * 3.125; 
 	py[nClus] = iy * 12.5 ;
 	ptime[nClus] = hResultTime->GetBinContent(iy+1);
 	
@@ -305,19 +305,20 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
 	    double aZ =  bX_to_aZ(bX);
 	    
 	    //	    if ( px[nClus] >= 7*3.125 && px[nClus] < 16*3.125 )  {
+	    //    if ( hResultNhit->GetBinContent(idy+1) >=3 ) {
 	    if ( (px[nClus] >= 20 && px[nClus] < 50) )   {
 	      ax_bx->Fill( aX, px[nClus]);
 	      axResTot->Fill ( px[nClus] - aX );
 	      axRes[iy]->Fill ( px[nClus] - aX );
-	      //	      htemp_iy->Fill (iy);
+	      // htemp_iy->Fill (iy);
 	      // double bY_to_aX ( double bY);
 	      // double bX_to_aZ ( double bX);
 	      // double bZ_to_aY ( double bZ);
 	      //	    cout << "ptime[nClus] = " << ptime[nClus] << endl;
 	      //	    cout << "az = " << aZ << endl;
 	      htime_z->Fill ( ptime[nClus], aZ);
-	      
 	    }
+	    
 	    
 	  }
 	  
@@ -364,8 +365,8 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
       gResultXY->SetMarkerColor(kWhite);
       gResultXY->Draw("same p");
       cvs1->cd(3);
-      //      hResultAdc->SetAxisRange(0,32,"Y");
-      //      hResultAdc->Draw("e");
+      //      hResultX->SetAxisRange(0,32,"Y");
+      //      hResultX->Draw("e");
       htemp->Reset();
       htemp->SetXTitle("y(mm)");
       htemp->SetYTitle("Charge");
@@ -515,7 +516,7 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
   cvsTime->cd(2);
   hTimeDiff->Draw();
 
-  TFile* fout = new TFile(Form("treeFiles/v5_histograms/trackHistograms_run%d.root",runNumber),"recreate");
+  TFile* fout = new TFile(Form("treeFiles/v5_histograms/trackHistograms_minNhit3_run%d.root",runNumber),"recreate");
   hNhitPerCluster->Write();
   hSlopeAXY->Write();
   hSlopeAZY->Write();
@@ -536,9 +537,9 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
 
 
 
-void doCluster( TH2F* hAdc, TH2F* hTime, float seedThr, TH1F* timediff, TH1F* hResultAdc, TH1F* hResultTime, TH1F* hResultNhit, bool useGaus) {
+void doCluster( TH2F* hAdc, TH2F* hTime, float seedThr, TH1F* timediff, TH1F* hResultX, TH1F* hResultTime, TH1F* hResultNhit, bool useGaus) {
 
-  hResultAdc->Reset();
+  hResultX->Reset();
   hResultTime->Reset();
   hResultNhit->Reset();
   TH1F* hForFit = new TH1F("hForFit","", 32,-0.5,31.5);
@@ -597,8 +598,8 @@ void doCluster( TH2F* hAdc, TH2F* hTime, float seedThr, TH1F* timediff, TH1F* hR
     //if ( nValHit == 1 )
     //      finalX = maxIx;
     
-    hResultAdc->SetBinContent( iy+1, finalX);
-    hResultAdc->SetBinError( iy+1, 0.001);
+    hResultX->SetBinContent( iy+1, finalX);
+    hResultX->SetBinError( iy+1, 0.001);
     hResultTime->SetBinContent(iy+1, maxAdcTime);
     hResultTime->SetBinError(iy+1, 0.001);
     hResultNhit->SetBinContent(iy+1, nValHit);

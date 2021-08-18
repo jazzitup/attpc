@@ -61,7 +61,8 @@ void easyLeg( TLegend *a=0, TString head="")
 void analyzeHistograms() { 
   
   //  TFile* f= new TFile("treeFiles/v5_histograms/trackHistograms_all.root");
-  TFile* f= new TFile("treeFiles/v5_histograms/trackHistograms_all.root");
+  TFile* f= new TFile("treeFiles/v5_histograms/trackHistograms_minNhit3_all.root");
+
   TH1F* hslopeAXY = (TH1F*)f->Get("hSlopeAXY");
   TH1F* hslopeAZY = (TH1F*)f->Get("hSlopeAZY");
   TH1F* hslopeBYZ = (TH1F*)f->Get("hSlopeBYZ");
@@ -90,9 +91,10 @@ void analyzeHistograms() {
   TH2D* htime_z_run[10];
   TFile* f_run[10];
   for ( int irun = 1 ; irun<=9 ; irun++) {
-    f_run[irun] = new TFile(Form("treeFiles/v5_histograms/trackHistograms_run%d.root",irun));
+    if (irun == 4 ) continue;
+    f_run[irun] = new TFile(Form("treeFiles/v5_histograms/trackHistograms_minNhit3_run%d.root",irun));
     htime_z_run[irun] = (TH2D*)f_run[irun]->Get("htime_z");
-    htime_z_run[irun]->SetName(Form("htime_z__run%d",irun));
+    htime_z_run[irun]->SetName(Form("htime_z_run%d",irun));
   }
   
   
@@ -171,6 +173,7 @@ void analyzeHistograms() {
    TCanvas* cvs6 = new TCanvas("cvs6","",900,900);
   cvs6->Divide(3,3);
   for ( int irun = 1 ; irun<=9 ; irun++) {
+    if (irun == 4 ) continue;
     cvs6->cd(irun);
     htime_z_run[irun]->Draw("colz");
     l1 = new TLegend(0.5943349,0.1346505,1,0.3607903,NULL,"brNDC");
@@ -186,6 +189,7 @@ void analyzeHistograms() {
   TH2D* htime_z_type2 = (TH2D*)htime_z_type1->Clone("htime_z_type2");
   
   for ( int irun = 1 ; irun<=9 ; irun++) {
+    if (irun == 4 ) continue;
     if (irun<=7) htime_z_type1->Add(htime_z_run[irun]);
     else  htime_z_type2->Add(htime_z_run[irun]);
   }
