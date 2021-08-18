@@ -22,11 +22,13 @@
 #include "TTree.h"
 
 void doCluster( TH2F* hAdc, TH2F* hTime, float seedThr, TH1F* timediff, TH1F* hResultAdc, TH1F* hResultTime, TH1F* hResultNhit, bool useGaus=false);
+bool isNearDeadPad( int idx, int idy);
 
 //float bdcTime_to_Sec ( int bdcTime); 
 
 //bool isDebugMode = true ;
 bool isDebugMode = false ;
+bool isUsingGaus = false;
 
 float dtCut = 0.25;
 
@@ -41,7 +43,7 @@ double aX_to_bY ( double bY);
 double aZ_to_bX ( double bX);
 double aY_to_bZ ( double bZ);
 
-
+PadMap pMap;
 
 
 
@@ -233,12 +235,13 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
   TH1D* hxRes_y = new TH1D("hxRes_y","; y (index); #Sigma(#Delta x) (mm)",8,-.5,7.5);
   
   TH2D* htime_z = new TH2D("htime_z",";TPC hit time (#mus); z (mm) from BDC ref.  ",50,0,7,50,20,160);
-
   TH1D* htemp_iy = new TH1D("htemp_iy","",100,-10,10);
+
+  TH1D* hNhitPerCluster = new TH1D("hNhitPerCluster",";N^{hit} per clusters",6,-.5,5.5);
+  
   
   
   int nEvents = t->GetEntries();
-  //  for ( int iev = 450 ; iev <500 ; iev++) {
   //  for ( int iev = 450 ; iev <nEvents ; iev++) {
   for ( int iev = 0 ; iev <nEvents ; iev++) {
     t->GetEntry(iev);
@@ -267,14 +270,20 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
       
     }
     
-    doCluster( hAdcGrid, hTimeGrid, seedThr, timediff, hResultAdc, hResultTime,hResultNhit, false);
-
+    doCluster( hAdcGrid, hTimeGrid, seedThr, timediff, hResultAdc, hResultTime,hResultNhit, isUsingGaus);
+    // Fill hNhitPerCluster
+    for ( int idy=0; idy<8 ; idy++) { 
+      hNhitPerCluster->Fill (hResultNhit->GetBinContent(idy+1) );
+    }
+    
+    
     float px[8];
     float py[8];
     float ptime[8];
     int nClus=0;
     for ( int iy=0 ; iy<8 ; iy++) {
-      if ( hResultAdc->GetBinContent(iy+1) > 0 ) {
+      //      if ( hResultAdc->GetBinContent(iy+1) > 0 ) {
+      if ( hResultNhit->GetBinContent(iy+1) >= 2 ) { // at least two hits
 	px[nClus] = hResultAdc->GetBinContent(iy+1) * 3.125; 
 	py[nClus] = iy * 12.5 ;
 	ptime[nClus] = hResultTime->GetBinContent(iy+1);
@@ -318,11 +327,11 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
       }
     }
     
-
+    
     
     if ( nClus <3 )
       continue;   // We don't need to fit this!!
-  
+    
     gResultXY =  new TGraph(nClus,px,py);
     gResultYX =  new TGraph(nClus,py,px);
     
@@ -333,10 +342,10 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
     
     gResultTime =  new TGraph(nClus,ptime,py);
     gResultTimeYX =  new TGraph(nClus,py,ptime);
-
+    
     fLinTime->SetParameters(4,0);
     gResultTimeYX->Fit(fLinTime, "M R Q");
-
+    
     // angle :
     if ( (trckNumY==1) && (trckNumX==1)) {
       hSlopeAXY->Fill(fLinYX->GetParameter(1));
@@ -507,6 +516,7 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
   hTimeDiff->Draw();
 
   TFile* fout = new TFile(Form("treeFiles/v5_histograms/trackHistograms_run%d_test.root",runNumber),"recreate");
+  hNhitPerCluster->Write();
   hSlopeAXY->Write();
   hSlopeAZY->Write();
   hSlopeBYZ->Write();
@@ -548,6 +558,8 @@ void doCluster( TH2F* hAdc, TH2F* hTime, float seedThr, TH1F* timediff, TH1F* hR
     }
     if ( maxAdc < seedThr )
       continue;
+    if  ( isNearDeadPad( maxIx, iy) )   // if it's near the dead channel
+      continue; 
     
     maxAdcTime =  hTime->GetBinContent( maxIx+1, iy+1) ; // Max adc in the same-iy-strip
     if ( isDebugMode) { 
@@ -608,6 +620,27 @@ void doCluster( TH2F* hAdc, TH2F* hTime, float seedThr, TH1F* timediff, TH1F* hR
   
 }
 */
+bool isNearDeadPad( int idx, int idy) {
+  bool result = false; 
+  //  cout << "idx, idy = " << idx << ", " << idy<<endl;
+
+  if (pMap.IsDeadPad( idx, idy))
+    result = true;
+
+  if (idx != 0) {
+    if (pMap.IsDeadPad(idx-1,idy)) {
+      result = true;
+    }
+  }
+
+  if (idx != 31) {
+    if (pMap.IsDeadPad(idx+1,idy))
+      {
+	result = true;
+      }
+  }
+  return result;
+}
 
 double bY_to_aX ( double bY) {
   return bY - (97 - 48.4375);   // bdc y = 97 -> attpc x = 48.4375
