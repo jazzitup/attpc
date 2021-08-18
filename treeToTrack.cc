@@ -164,7 +164,7 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
   TH1F* hResultCharge = new TH1F("hist_chg"," ; yid ; x_mean",8 , -.5, 7.5);
   TH1F* hResultTime = new TH1F("hist_time"," ; yid ; Timing (#mus)",8 , -.5, 7.5);
 
-  TH1F* hSlopeAXY = new TH1F("hslopeAXY","; dx/dy (ATTPC coor.);",200,-1,1); 
+  TH1F* hSlopeAXY = new TH1F("hSlopeAXY","; dx/dy (ATTPC coor.);",200,-1,1); 
   TH1F* hSlopeAZY = (TH1F*)hSlopeAXY->Clone("hSlopeAZY");
   hSlopeAZY->SetXTitle("dz/dy (ATTPC coor.)");
 
