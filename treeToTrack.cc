@@ -21,7 +21,7 @@
 #include "TSystem.h"
 #include "TTree.h"
 
-void doCluster( TH2F* hAdc, TH2F* hTime, float seedThr, TH1F* timediff, TH1F* hResChg, TH1F* hResTime);
+void doCluster( TH2F* hAdc, TH2F* hTime, float seedThr, TH1F* timediff, TH1F* hResultAdc, TH1F* hResultTime, TH1F* hResultNhit, bool useGaus=false);
 
 //float bdcTime_to_Sec ( int bdcTime); 
 
@@ -48,8 +48,7 @@ double aY_to_bZ ( double bZ);
 void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to be analyzed.  If -1, we analyze everything
   
   
-  float seedThr = 100;
-  
+  float seedThr = 50;  
   float  vDrift = 46 ; // in mm/microsecond  <= This must be updated! 
   TString fname = Form("./treeFiles/v5/treeOfHits_muon_run%d.root",runNumber);
   TFile* fileIn = new TFile(fname);
@@ -161,8 +160,9 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
    
   TH1F* timediff = new TH1F("timediff","; #Deltat (#mus);",500,-10,10);
   
-  TH1F* hResultCharge = new TH1F("hist_chg"," ; yid ; x_mean",8 , -.5, 7.5);
+  TH1F* hResultAdc = new TH1F("hist_chg"," ; yid ; x_mean",8 , -.5, 7.5);
   TH1F* hResultTime = new TH1F("hist_time"," ; yid ; Timing (#mus)",8 , -.5, 7.5);
+  TH1F* hResultNhit = new TH1F("hist_nhits"," ; yid ; N_{hit}",8 , -.5, 7.5);
 
   TH1F* hSlopeAXY = new TH1F("hSlopeAXY","; dx/dy (ATTPC coor.);",200,-1,1); 
   TH1F* hSlopeAZY = (TH1F*)hSlopeAXY->Clone("hSlopeAZY");
@@ -267,15 +267,15 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
       
     }
     
-    doCluster( hAdcGrid, hTimeGrid, seedThr, timediff, hResultCharge, hResultTime);
+    doCluster( hAdcGrid, hTimeGrid, seedThr, timediff, hResultAdc, hResultTime,hResultNhit, false);
 
     float px[8];
     float py[8];
     float ptime[8];
     int nClus=0;
     for ( int iy=0 ; iy<8 ; iy++) {
-      if ( hResultCharge->GetBinContent(iy+1) > 0 ) {
-	px[nClus] = hResultCharge->GetBinContent(iy+1) * 3.125; 
+      if ( hResultAdc->GetBinContent(iy+1) > 0 ) {
+	px[nClus] = hResultAdc->GetBinContent(iy+1) * 3.125; 
 	py[nClus] = iy * 12.5 ;
 	ptime[nClus] = hResultTime->GetBinContent(iy+1);
 	
@@ -355,8 +355,8 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
       gResultXY->SetMarkerColor(kWhite);
       gResultXY->Draw("same p");
       cvs1->cd(3);
-      //      hResultCharge->SetAxisRange(0,32,"Y");
-      //      hResultCharge->Draw("e");
+      //      hResultAdc->SetAxisRange(0,32,"Y");
+      //      hResultAdc->Draw("e");
       htemp->Reset();
       htemp->SetXTitle("y(mm)");
       htemp->SetYTitle("Charge");
@@ -506,7 +506,7 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
   cvsTime->cd(2);
   hTimeDiff->Draw();
 
-  TFile* fout = new TFile(Form("treeFiles/v5_histograms/trackHistograms_run%d.root",runNumber),"recreate");
+  TFile* fout = new TFile(Form("treeFiles/v5_histograms/trackHistograms_run%d_test.root",runNumber),"recreate");
   hSlopeAXY->Write();
   hSlopeAZY->Write();
   hSlopeBYZ->Write();
@@ -526,19 +526,19 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
 
 
 
-void doCluster( TH2F* hAdc, TH2F* hTime, float seedThr, TH1F* timediff, TH1F* hResChg, TH1F* hResTime) {
+void doCluster( TH2F* hAdc, TH2F* hTime, float seedThr, TH1F* timediff, TH1F* hResultAdc, TH1F* hResultTime, TH1F* hResultNhit, bool useGaus) {
 
-  hResChg->Reset();
-  hResTime->Reset();
+  hResultAdc->Reset();
+  hResultTime->Reset();
+  hResultNhit->Reset();
   TH1F* hForFit = new TH1F("hForFit","", 32,-0.5,31.5);
   TF1* fGaus = new TF1("fGaus","gaus",0,32);
-
   
   for ( int iy=0 ; iy<8 ; iy++) {
     
-
     // Find the seed in this y strip
     float maxAdc = 0 ; // Max adc in the same-iy-strip
+    float maxAdcTime = -100;
     int maxIx = -1;
     for ( int ix=0 ; ix<32 ; ix++) {
       if  (hAdc->GetBinContent(ix+1, iy+1) > maxAdc)  {
@@ -546,68 +546,55 @@ void doCluster( TH2F* hAdc, TH2F* hTime, float seedThr, TH1F* timediff, TH1F* hR
 	maxIx = ix;
       }
     }
-    float maxAdcTime =  hTime->GetBinContent( maxIx+1, iy+1) ; // Max adc in the same-iy-strip
-  
-    if ( maxAdc >  seedThr ) {
-      
-      if ( isDebugMode) { 
-	if ( maxIx != 0 )
-	  timediff->Fill (  hTime->GetBinContent( maxIx, iy+1) - maxAdcTime );
-	if ( maxIx != 7 )
-	  timediff->Fill (  hTime->GetBinContent( maxIx+2, iy+1) - maxAdcTime ) ;
-      }
-      
-      float sumAdc = 0 ;
-      float xWgtSumAdc = 0 ;
-      float meanX ;
-
-      hForFit->Reset();
-      int nValHit = 0;
-      for ( int iclu = -2 ; iclu <=2 ; iclu++) {
-	int cluIx = maxIx + iclu;
-	if ( (cluIx>-1) && (cluIx<32) && (fabs(hTime->GetBinContent(cluIx+1, iy+1) - maxAdcTime) < dtCut) ) { // cluIx : 0 ~ 31
-	  sumAdc = sumAdc + hAdc->GetBinContent ( cluIx+1, iy+1) ;
-	  xWgtSumAdc = xWgtSumAdc +  hAdc->GetBinContent ( cluIx+1, iy+1) * cluIx ; 
-	  
-	  hForFit->SetBinContent( cluIx+1,  hAdc->GetBinContent ( cluIx+1, iy+1) );  
-	  nValHit++;
-	}
-      }
-
-      //      cout << "fGaus->GetParameter(0)" << fGaus->GetParameter(0) << endl; 
-      meanX = xWgtSumAdc/sumAdc;
-      fGaus->SetParameter(0, maxAdc);
-      fGaus->SetParameter(0, meanX);
-      
-      hForFit->Fit(fGaus, "LL M Q Q R");
-
-      //      cout << " nValHit = " << nValHit << endl;
-      //       cout << "mean from gaus. fit  = " << fGaus->GetParameter(1) << endl; 
-      //      cout << "arithmatic mean      = " << meanX << endl;
-
-      //      cout << "Avg - seed = " << meanX - maxIx << endl;
-
-      float finalX =  fGaus->GetParameter(1) ;
-      if ( nValHit == 1 )
-	finalX = maxIx;
-      //      finalX = meanX;
-      
-      hResChg->SetBinContent( iy+1, finalX);
-      hResChg->SetBinError( iy+1, 0.001);
-      hResTime->SetBinContent(iy+1, maxAdcTime);
-      hResTime->SetBinError(iy+1, 0.001);
-      if ( 1==0)  {
-	TCanvas* tempcvs = new TCanvas("tempcvs","",500,500);
-	hForFit->Draw();
-	tempcvs->SaveAs(Form("tracking/figure1_iy%d.png",iy));
-	delete tempcvs;
+    if ( maxAdc < seedThr )
+      continue;
+    
+    maxAdcTime =  hTime->GetBinContent( maxIx+1, iy+1) ; // Max adc in the same-iy-strip
+    if ( isDebugMode) { 
+      if ( maxIx != 0 )
+	timediff->Fill (  hTime->GetBinContent( maxIx, iy+1) - maxAdcTime );
+      if ( maxIx != 7 )
+	timediff->Fill (  hTime->GetBinContent( maxIx+2, iy+1) - maxAdcTime ) ;
+    }
+    
+    
+    int nValHit = 0;
+    float sumAdc = 0 ;
+    hForFit->Reset();
+    for ( int iclu = -2 ; iclu <=2 ; iclu++) {
+      int cluIx = maxIx + iclu;
+      if ( (cluIx>-1) && (cluIx<32) && (fabs(hTime->GetBinContent(cluIx+1, iy+1) - maxAdcTime) < dtCut) ) { // cluIx : 0 ~ 31
+	if (hAdc->GetBinContent ( cluIx+1, iy+1) > seedThr)
+	  {
+	    nValHit++;
+	    sumAdc = sumAdc + hAdc->GetBinContent ( cluIx+1, iy+1) ;
+	    hForFit->SetBinContent( cluIx+1,  hAdc->GetBinContent ( cluIx+1, iy+1) );  
+	  }
       }
     }
+    //      cout << "fGaus->GetParameter(0)" << fGaus->GetParameter(0) << endl; 
+    float meanX = hForFit->GetMean();
+    fGaus->SetParameter(0, maxAdc);
+    fGaus->SetParameter(1, meanX);
+    
+    hForFit->Fit(fGaus, "LL M Q Q R");
+    
+    float finalX =  meanX;
+    if (useGaus) finalX = fGaus->GetParameter(1) ;
+
+    //if ( nValHit == 1 )
+    //      finalX = maxIx;
+    
+    hResultAdc->SetBinContent( iy+1, finalX);
+    hResultAdc->SetBinError( iy+1, 0.001);
+    hResultTime->SetBinContent(iy+1, maxAdcTime);
+    hResultTime->SetBinError(iy+1, 0.001);
+    hResultNhit->SetBinContent(iy+1, nValHit);
   }
   
   delete fGaus;
   delete hForFit;
-  
+  //  delete h2dtemp;
 }
 
 /* float bdcTime_to_Sec ( int bdcTime) {
