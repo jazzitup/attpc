@@ -1,4 +1,4 @@
-for (( j=9 ; j>=1 ; j--))
+for (( j=1 ; j<=9 ; j++))
 do
 root -l -b <<-EOF
 .L DataFrame.cc
