@@ -26,8 +26,8 @@ bool isNearDeadPad( int idx, int idy);
 
 //float bdcTime_to_Sec ( int bdcTime); 
 
-//bool isDebugMode = true ;
-bool isDebugMode = false ;
+//bool isDebugMode = false ;
+bool isDebugMode = true ;
 bool isUsingGaus = false;
 
 float dtCut = 0.25;
@@ -225,7 +225,8 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
   
   
 
-  TH2D* ax_bx = new TH2D("ax_by",";x_{ATTPC coor.} (mm) ;y_{BDC coor.} (mm)",200,0,100,200,0,100);
+  TH2D* ax_by = new TH2D("ax_by",";x_{ATTPC coor.} (mm) ;y_{BDC coor.} (mm)",200,0,100,200,0,100);
+  TH2D* adxdy_bdydz = new TH2D("adxdy_bdydz",";dx/dy_{ATTPC coor.} ; -dy/dz_{BDC coor.}",120,-1,1,120,-1,1);
   TH1D* axResTot = new TH1D("axResTot","; x_{AT-TPC} - x_{BDC} (mm)",200,-20,20);
   TH1D* axRes[10];
   for ( int idy = 0 ; idy<8 ; idy++) {
@@ -281,7 +282,8 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
     float py[8];
     float ptime[8];
     int nClus=0;
-    for ( int iy=0 ; iy<8 ; iy++) {
+    //    for ( int iy=0 ; iy<8 ; iy++) {
+    for ( int iy=1 ; iy<7 ; iy++) {
       //      if ( hResultX->GetBinContent(iy+1) > 0 ) {
       if ( hResultNhit->GetBinContent(iy+1) >= 3 ) { // at least three hits
 	px[nClus] = hResultX->GetBinContent(iy+1) * 3.125; 
@@ -307,7 +309,7 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
 	    //	    if ( px[nClus] >= 7*3.125 && px[nClus] < 16*3.125 )  {
 	    //    if ( hResultNhit->GetBinContent(idy+1) >=3 ) {
 	    if ( (px[nClus] >= 20 && px[nClus] < 50) )   {
-	      ax_bx->Fill( aX, px[nClus]);
+	      ax_by->Fill( aX, px[nClus]);
 	      axResTot->Fill ( px[nClus] - aX );
 	      axRes[iy]->Fill ( px[nClus] - aX );
 	      // htemp_iy->Fill (iy);
@@ -330,7 +332,7 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
     
     
     
-    if ( nClus <3 )
+    if ( nClus <5 )
       continue;   // We don't need to fit this!!
     
     gResultXY =  new TGraph(nClus,px,py);
@@ -353,17 +355,30 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
       hSlopeAZY->Fill ( fLinTime->GetParameter(1)*vDrift );
       hSlopeBYZ->Fill( -Zgrad_X[0]);
       hSlopeBXZ->Fill( Zgrad_Y[0]);
+      
+      adxdy_bdydz->Fill( fLinYX->GetParameter(1),  -Zgrad_X[0]);
     }
     if ( isDebugMode) {
       TCanvas* cvs1 = new TCanvas("cvs1", "", 800, 800);  
       cvs1->Divide(2,2);
-      cvs1->cd(1);
-      hTime->Draw("colz");
       cvs1->cd(2);
+      hTime->Draw("colz");
+      cvs1->cd(1);
       hAdc->Draw("colz");
       gResultXY->SetMarkerSize(1);
       gResultXY->SetMarkerColor(kWhite);
       gResultXY->Draw("same p");
+
+      //                aY = - 410.25 +  Ygrad[0] * (aX + 48.5625)  + Yc[0]
+      TF1 *f1 = new TF1("f1","-410.25 + [0]*(x + 48.5625)  + [1]",0,100);
+      if (trckNumY==1) {
+	f1->SetParameter(0,  Ygrad[0]);
+	f1->SetParameter(1,  Yc[0]);
+	f1->SetLineColor(4);
+	f1->SetLineWidth(4);
+	f1->Draw("same");
+      }
+      
       cvs1->cd(3);
       //      hResultX->SetAxisRange(0,32,"Y");
       //      hResultX->Draw("e");
@@ -381,6 +396,7 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
       gResultTimeYX->Draw("same p");
 
       cvs1->SaveAs(Form("tracking/figure1_%05d.png",evtId));
+      delete f1;
     }
 
   }
@@ -421,10 +437,10 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
   hSlopeBXZ->Draw();
 
 
-  TCanvas* cvs4 = new TCanvas("cvs4","",800,400);
+  /*  TCanvas* cvs4 = new TCanvas("cvs4","",800,400);
   cvs4->Divide(2,1);
   cvs4->cd(1);
-  ax_bx->Draw("colz");
+  ax_by->Draw("colz");
   cvs4->cd(2);
   axResTot->Draw();
   axResTot->Fit("gaus");
@@ -439,23 +455,23 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
   l3->SetLineColor(1);
   l3->SetLineStyle(1);
   l3->Draw(); 
-
+  */
   TCanvas* cvs45 = new TCanvas("cvs45","",1200,600);
   cvs45->Divide(4,2);
   for ( int iy = 0 ; iy<8 ; iy++) {
     cvs45->cd(iy+1);
     axRes[iy]->Draw();
-    axRes[iy]->Fit("gaus");
-    TF1 *gausFit = (TF1*) axRes[iy]->GetFunction("gaus");
-    float gausMean = gausFit->GetParameter(1);
-    float gausMeanErr = gausFit->GetParError(1);
-    float gausSig = gausFit->GetParameter(2);
-    float gausSigErr = gausFit->GetParError(2);
-    hxShift_y->SetBinContent(iy+1, gausMean);
-    hxShift_y->SetBinError(iy+1, gausMeanErr);
-    hxRes_y->SetBinContent(iy+1, gausSig);
-    hxRes_y->SetBinError(iy+1, gausSigErr);
-    
+    //    axRes[iy]->Fit("gaus");
+    //    TF1 *gausFit = (TF1*) axRes[iy]->GetFunction("gaus");
+    //  float gausMean = gausFit->GetParameter(1);
+    //    float gausMeanErr = gausFit->GetParError(1);
+    //    float gausSig = gausFit->GetParameter(2);
+    //    float gausSigErr = gausFit->GetParError(2);
+    //    hxShift_y->SetBinContent(iy+1, gausMean);
+    //    hxShift_y->SetBinError(iy+1, gausMeanErr);
+    //    hxRes_y->SetBinContent(iy+1, gausSig);
+    //    hxRes_y->SetBinError(iy+1, gausSigErr);
+    //    
     /*    TLegend *l31 = new TLegend(0.2179929,0.2869624,0.879292,0.5455645,NULL,"brNDC");
     l31->SetHeader("Fit result");
     l31->AddEntry("",Form("Mean = %.1f mm", gausMean),"");
@@ -522,7 +538,8 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
   hSlopeAZY->Write();
   hSlopeBYZ->Write();
   hSlopeBXZ->Write();
-  ax_bx->Write();
+  ax_by->Write();
+  adxdy_bdydz->Write();
   axResTot->Write();
   for ( int iy = 0 ; iy<8 ; iy++) {
     axRes[iy]->Write();
@@ -662,3 +679,5 @@ double aZ_to_bX ( double aZ) {
 double aY_to_bZ ( double aY) {
   return  aY  + (454 - 43.75) ;
 }
+//   bdc_z = Ygrad[0] * bdc_y + Yc[0]
+//  aY = - 410.25 +  Ygrad[0] * (aX + 48.5625)  + Yc[0] 
