@@ -34,11 +34,20 @@ double fitFcn(double *x, double *par) {
 void grawToTree() {
   
     bool isDebugMode = 0 ;   // Save the performance plots
-    const int runId = 8;
-    TFile *fout = new TFile(Form("treeOfHits_run%02d_test.root", runId), "recreate");
+    const int runId = 1;
+    TFile *fout = new TFile(Form("treeOfHits_run%d_test.root", runId), "recreate");
     GETDecoder decoder;
-    decoder.OpenFromList("fileList/short.txt");
-    //    decoder.OpenFromList("fileList/files_muon_run1.txt");
+    if ( runId == 0 ) { // test run
+      decoder.OpenFromList("fileList/files_muon_run1.txt");
+    }
+    else if ( runId <9) {
+      decoder.OpenFromList(Form("fileList/files_muon_run%d.txt ", runId));
+    }
+    else {
+      cout << " No event for runId = " << runId << endl;
+      return;
+    }
+    
     GETAnalyzer analyzer;
     analyzer.LinkToDecoder(&decoder);
     GETPad pad;
