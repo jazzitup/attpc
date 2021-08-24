@@ -395,7 +395,7 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
       htemp->DrawCopy();
       gResultTimeYX->Draw("same p");
 
-      cvs1->SaveAs(Form("tracking/figure1_%05d.png",evtId));
+      cvs1->SaveAs(Form("tracking/figure1_%05d_run%d_BDCevent%d.png",evtId,runNumber,(int)Event));
       delete f1;
     }
 

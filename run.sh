@@ -1,9 +1,11 @@
-for (( j=1 ; j<=9 ; j++))
+for (( j=1 ; j<=1 ; j++))
+#for (( j=1 ; j<=9 ; j++))
 do
 root -l -b <<-EOF
-.L DataFrame.cc
-.L PadMap.cc
-.x grawToTree.cc( $1, $j)
+.L GETAnalyzer.cc
+.L GETDecoder.cc
+.L GETPad.cc 
+.x grawToTree.cc
 .q
 EOF
 done
