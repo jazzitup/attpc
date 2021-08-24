@@ -57,7 +57,7 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
   //  TFile* fileIn = new TFile("./treeOfHits_muon_run1.root");
 
   float bucketInMicSec = 0.010;
-  TTree* t = (TTree*)fileIn->Get("hit");
+  TTree* t = (TTree*)fileIn->Get("treeOfHits");
   int evtId;
   int nhits;
   double evtTime;
