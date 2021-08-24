@@ -39,7 +39,7 @@ void grawToTree(int runId = 1) {
     if ( runId == 0 ) { // test run
       decoder.OpenFromList("fileList/files_muon_run1.txt");
     }
-    else if ( runId <9) {
+    else if ( runId <=9) {
       decoder.OpenFromList(Form("fileList/files_muon_run%d.txt", runId));
     }
     else {
