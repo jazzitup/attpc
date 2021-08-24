@@ -31,17 +31,16 @@ double sigFcn(double *x, double *par) {
 double fitFcn(double *x, double *par) {
     return sigFcn(x, par) < par[3] ? sigFcn(x, par) : par[3];
 }
-void grawToTree() {
+void grawToTree(int runId = 1) {
   
     bool isDebugMode = 0 ;   // Save the performance plots
-    const int runId = 1;
-    TFile *fout = new TFile(Form("treeOfHits_run%d_test.root", runId), "recreate");
+    TFile *fout = new TFile(Form("treeOfHits_run%d_v6_2021Aug24.root", runId), "recreate");
     GETDecoder decoder;
     if ( runId == 0 ) { // test run
       decoder.OpenFromList("fileList/files_muon_run1.txt");
     }
     else if ( runId <9) {
-      decoder.OpenFromList(Form("fileList/files_muon_run%d.txt ", runId));
+      decoder.OpenFromList(Form("fileList/files_muon_run%d.txt", runId));
     }
     else {
       cout << " No event for runId = " << runId << endl;
@@ -79,9 +78,9 @@ void grawToTree() {
     auto fFitFcn = new TF1("fFitFcn", fitFcn, 1, 500, 4);
     auto c1 = new TCanvas("c1", "", 2000, 1400);
     double startTime, prevTime;
-    int counter_for_test = 0;  
-    while (decoder.Run() && counter_for_test <50 ) {
-      counter_for_test++;
+    //    int counter_for_test = 0;  
+    while (decoder.Run()) {
+      //      counter_for_test++;
       analyzer.RunEventChecker();
         if (analyzer.IsFakeEvent()) continue;
         eventId = decoder.GetEventId() - analyzer.GetNumberOfFakeEventBefore();
