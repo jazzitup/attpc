@@ -35,7 +35,7 @@ void grawToTree() {
   
     bool isDebugMode = 0 ;   // Save the performance plots
     const int runId = 1;
-    TFile *fout = new TFile(Form("treeOfHits_run%d_test.root", runId), "recreate");
+    TFile *fout = new TFile(Form("treeOfHits_run%d_v6_2021Aug24.root", runId), "recreate");
     GETDecoder decoder;
     if ( runId == 0 ) { // test run
       decoder.OpenFromList("fileList/files_muon_run1.txt");
