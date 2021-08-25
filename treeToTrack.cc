@@ -27,7 +27,7 @@ bool isNearDeadPad( int idx, int idy);
 //float bdcTime_to_Sec ( int bdcTime); 
 
 //bool isDebugMode = false ;
-bool isDebugMode = true ;
+bool isDebugMode = false ;
 bool isUsingGaus = false;
 
 float dtCut = 0.25;
@@ -52,7 +52,7 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
   
   float seedThr = 50;  
   float  vDrift = 46 ; // in mm/microsecond  <= This must be updated! 
-  TString fname = Form("./treeFiles/v5/treeOfHits_muon_run%d.root",runNumber);
+  TString fname = Form("./treeFiles/v6/treeOfHits_run%d_v6_2021Aug24.root",runNumber);
   TFile* fileIn = new TFile(fname);
   //  TFile* fileIn = new TFile("./treeOfHits_muon_run1.root");
 
