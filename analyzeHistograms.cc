@@ -61,7 +61,7 @@ void easyLeg( TLegend *a=0, TString head="")
 void analyzeHistograms() { 
   
   //  TFile* f= new TFile("treeFiles/v5_histograms/trackHistograms_all.root");
-  TFile* f= new TFile("treeFiles/v5_histograms/trackHistograms_minNhit3_all.root");
+  TFile* f= new TFile("treeFiles/v6_histograms/trackHistograms_minNhit3_all.root");
 
   TH1F* hslopeAXY = (TH1F*)f->Get("hSlopeAXY");
   TH1F* hslopeAZY = (TH1F*)f->Get("hSlopeAZY");
@@ -92,7 +92,7 @@ void analyzeHistograms() {
   TFile* f_run[10];
   for ( int irun = 1 ; irun<=9 ; irun++) {
     if (irun == 4 ) continue;
-    f_run[irun] = new TFile(Form("treeFiles/v5_histograms/trackHistograms_minNhit3_run%d.root",irun));
+    f_run[irun] = new TFile(Form("treeFiles/v6_histograms/trackHistograms_minNhit3_run%d.root",irun));
     htime_z_run[irun] = (TH2D*)f_run[irun]->Get("htime_z");
     htime_z_run[irun]->SetName(Form("htime_z_run%d",irun));
   }

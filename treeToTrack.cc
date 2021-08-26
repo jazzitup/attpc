@@ -27,7 +27,7 @@ bool isNearDeadPad( int idx, int idy);
 //float bdcTime_to_Sec ( int bdcTime); 
 
 //bool isDebugMode = false ;
-bool isDebugMode = false ;
+bool isDebugMode = true ;
 bool isUsingGaus = false;
 
 float dtCut = 0.25;
@@ -58,7 +58,34 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
 
   float bucketInMicSec = 0.010;
   TTree* t = (TTree*)fileIn->Get("treeOfHits");
-  int evtId;
+
+   // Declaration of leaf types
+   Int_t           evtId;
+   Bool_t          isSpark;
+   Double_t        evtTime;
+   Double_t        diffTime;
+   Int_t           nhits;
+   Double_t        xTree[65];   //[nhits]
+   Double_t        yTree[65];   //[nhits]
+   Int_t           xId[65];   //[nhits]
+   Int_t           yId[65];   //[nhits]
+   Double_t        timeTree[65];   //[nhits]
+   Double_t        adcTree[65];   //[nhits]
+
+   // List of branches
+   TBranch        *b_evtId;   //!
+   TBranch        *b_isSpark;   //!
+   TBranch        *b_evtTime;   //!
+   TBranch        *b_diffTime;   //!
+   TBranch        *b_nhits;   //!
+   TBranch        *b_xTree;   //!
+   TBranch        *b_yTree;   //!
+   TBranch        *b_xId;   //!
+   TBranch        *b_yId;   //!
+   TBranch        *b_timeTree;   //!
+   TBranch        *b_adcTree;   //!
+   
+   /*  int evtId;
   int nhits;
   double evtTime;
   float xTree[256];  // x = row * 100mm / 8
@@ -67,8 +94,21 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
   int yId[256];  // y = col * 100mm / 32
   float timeTree[256];
   float adcTree[256];
-  
-  t->SetBranchAddress("eventId",&evtId);
+   */
+   
+  t->SetBranchAddress("eventId", &evtId, &b_evtId);
+   t->SetBranchAddress("isSpark", &isSpark, &b_isSpark);
+   t->SetBranchAddress("eventTime", &evtTime, &b_evtTime);
+   t->SetBranchAddress("diffTime", &diffTime, &b_diffTime);
+   t->SetBranchAddress("nHits", &nhits, &b_nhits);
+   t->SetBranchAddress("x", xTree, &b_xTree);
+   t->SetBranchAddress("y", yTree, &b_yTree);
+   t->SetBranchAddress("xId", xId, &b_xId);
+   t->SetBranchAddress("yId", yId, &b_yId);
+   t->SetBranchAddress("time", timeTree, &b_timeTree);
+   t->SetBranchAddress("adc", adcTree, &b_adcTree);
+
+   /*   t->SetBranchAddress("eventId",&evtId);
   t->SetBranchAddress("nhits",&nhits);
   t->SetBranchAddress("x",xTree);
   t->SetBranchAddress("y",yTree);
@@ -76,7 +116,8 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
   t->SetBranchAddress("yid",yId);
   t->SetBranchAddress("time",timeTree);
   t->SetBranchAddress("adc",adcTree);
-  t->SetBranchAddress("evtTime", &evtTime);
+  t->SetBranchAddress("evtTime", &evtTime); 
+*/
 
   t->GetEntry(0);  // 0점 맞추기
   double ATTPC_evt0_time = evtTime; 
@@ -243,7 +284,11 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
   
   
   int nEvents = t->GetEntries();
+
   //  for ( int iev = 450 ; iev <nEvents ; iev++) {
+  int attpcCounter=0;
+  int bdcCounter=0;
+  
   for ( int iev = 0 ; iev <nEvents ; iev++) {
     t->GetEntry(iev);
     hNhits->Fill(nhits);
@@ -308,7 +353,7 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
 	    
 	    //	    if ( px[nClus] >= 7*3.125 && px[nClus] < 16*3.125 )  {
 	    //    if ( hResultNhit->GetBinContent(idy+1) >=3 ) {
-	    if ( (px[nClus] >= 20 && px[nClus] < 50) )   {
+	    if ( (px[nClus] >= 20 && px[nClus] < 90) )   {
 	      ax_by->Fill( aX, px[nClus]);
 	      axResTot->Fill ( px[nClus] - aX );
 	      axRes[iy]->Fill ( px[nClus] - aX );
@@ -332,8 +377,12 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
     
     
     
-    if ( nClus <5 )
+    if ( nClus <4 )
       continue;   // We don't need to fit this!!
+    
+    attpcCounter++;
+    if (trckNumY==1) 
+      bdcCounter++;
     
     gResultXY =  new TGraph(nClus,px,py);
     gResultYX =  new TGraph(nClus,py,px);
@@ -351,6 +400,7 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
     
     // angle :
     if ( (trckNumY==1) && (trckNumX==1)) {
+    //    if (trckNumY==1) {
       hSlopeAXY->Fill(fLinYX->GetParameter(1));
       hSlopeAZY->Fill ( fLinTime->GetParameter(1)*vDrift );
       hSlopeBYZ->Fill( -Zgrad_X[0]);
@@ -368,7 +418,6 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
       gResultXY->SetMarkerSize(1);
       gResultXY->SetMarkerColor(kWhite);
       gResultXY->Draw("same p");
-
       //                aY = - 410.25 +  Ygrad[0] * (aX + 48.5625)  + Yc[0]
       TF1 *f1 = new TF1("f1","-410.25 + [0]*(x + 48.5625)  + [1]",0,100);
       if (trckNumY==1) {
@@ -395,7 +444,7 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
       htemp->DrawCopy();
       gResultTimeYX->Draw("same p");
 
-      cvs1->SaveAs(Form("tracking/figure1_%05d_run%d_BDCevent%d.png",evtId,runNumber,(int)Event));
+      cvs1->SaveAs(Form("tracking/v6/figure1_%05d_run%d_BDCevent%d.png",evtId,runNumber,(int)Event));
       delete f1;
     }
 
@@ -532,7 +581,7 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
   cvsTime->cd(2);
   hTimeDiff->Draw();
 
-  TFile* fout = new TFile(Form("treeFiles/v5_histograms/trackHistograms_minNhit3_run%d.root",runNumber),"recreate");
+  TFile* fout = new TFile(Form("treeFiles/v6_histograms/trackHistograms_minNhit3_run%d.root",runNumber),"recreate");
   hNhitPerCluster->Write();
   hSlopeAXY->Write();
   hSlopeAZY->Write();
@@ -550,6 +599,10 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
   htimeProf->Write();
 
   fout->Close();
+
+  cout << "* Run No. " << runNumber << endl; 
+  cout << "    Good AT-TPC events     : " << attpcCounter << endl;
+  cout << "    (Out of it) BDC events : " << bdcCounter << endl;
 }
 
 
