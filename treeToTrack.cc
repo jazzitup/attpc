@@ -4,8 +4,6 @@
 #include <string>
 #include <vector>
 
-#include "DataFrame.h"
-#include "PadMap.h"
 #include "TCanvas.h"
 #include "TF1.h"
 #include "TFile.h"
@@ -32,7 +30,7 @@ bool isUsingGaus = false;
 
 float dtCut = 0.25;
 
-bool add_BDC_Info = true;
+bool add_BDC_Info = false;
 
 
 double bY_to_aX ( double bY); 
@@ -43,7 +41,6 @@ double aX_to_bY ( double bY);
 double aZ_to_bX ( double bX);
 double aY_to_bZ ( double bZ);
 
-PadMap pMap;
 
 
 
@@ -244,24 +241,23 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
       tBdc->GetEntry(jev);
       btime_arr[jev]  = dur_secDif - BDC_evt0_time ;
     }
-  }
-
-  for ( int iev = 0 ; iev <t->GetEntries() ; iev++) {
-    double minDiff = 10;
-    int matchedIndex =  -1;
-    for ( int jev =0  ; jev < tBdc->GetEntries() ; jev++) {
-      if ( fabs(atime_arr[iev] - btime_arr[jev]) < fabs(minDiff) ) {
-	minDiff = atime_arr[iev] - btime_arr[jev] ;
-	matchedIndex = jev; 
+     
+    for ( int iev = 0 ; iev <t->GetEntries() ; iev++) {
+      double minDiff = 10;
+      int matchedIndex =  -1;
+      for ( int jev =0  ; jev < tBdc->GetEntries() ; jev++) {
+	if ( fabs(atime_arr[iev] - btime_arr[jev]) < fabs(minDiff) ) {
+	  minDiff = atime_arr[iev] - btime_arr[jev] ;
+	  matchedIndex = jev; 
+	}
       }
+      index_attpc_to_bdc[iev] = matchedIndex ;
+      cout << "minDiff = " << minDiff << endl;
+      hTimeDiff->Fill( minDiff);
+      //      cout << " attpc_time = " << atime_arr[iev] << "    ";
+      //      cout << " bdc_time = " << btime_arr[ index_attpc_to_bdc[iev] ]  <<"    diff = " << minDiff  << endl;
     }
-    index_attpc_to_bdc[iev] = matchedIndex ;
-    cout << "minDiff = " << minDiff << endl;
-    hTimeDiff->Fill( minDiff);
-    //      cout << " attpc_time = " << atime_arr[iev] << "    ";
-    //      cout << " bdc_time = " << btime_arr[ index_attpc_to_bdc[iev] ]  <<"    diff = " << minDiff  << endl;
   }
-  
   
   
   
@@ -278,8 +274,7 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
   TH1D* hxRes_y = new TH1D("hxRes_y","; y (index); #Sigma(#Delta x) (mm)",8,-.5,7.5);
   
   TH2D* htime_z = new TH2D("htime_z",";TPC hit time (#mus); z (mm) from BDC ref.  ",50,0,7,50,20,160);
-  TH1D* htemp_iy = new TH1D("htemp_iy","",100,-10,10);
-  
+  TH1D *htimeProf;
   TH1D* hNhitPerCluster = new TH1D("hNhitPerCluster",";N^{hit} per clusters",6,-.5,5.5);
   
   
@@ -328,7 +323,6 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
     float py[8];
     float ptime[8];
     int nClus=0;
-    //    for ( int iy=0 ; iy<8 ; iy++) {
     for ( int iy=2 ; iy<6 ; iy++) {
       //      if ( hResultX->GetBinContent(iy+1) > 0 ) {
       if ( hResultNhit->GetBinContent(iy+1) >= 3 ) { // at least three hits
@@ -336,46 +330,39 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
 	py[nClus] = iy * 12.5 ;
 	ptime[nClus] = hResultTime->GetBinContent(iy+1);
 	
-	if (index_attpc_to_bdc[iev] == -1)
-	  cout << " BDC not triggered" << endl;
-	else {
-	  //	  if (trckNumX==1) {
-	  if ( (trckNumY==1) && (trckNumX==1)) {
-	    // The aY position is  py[nClus]
-	    
-	    double bZ = aY_to_bZ(py[nClus]);
-	    
-	    //      bdc_z = Ygrad[0] * bdc_y + Yc[0] ;
-	    //        // z = Ygrad[ix] *y + Yc ;
-	    double bY = (bZ - Yc[0])/Ygrad[0];
-	    double bX = (bZ - Xc[0])/Xgrad[0];
-	    double aX = bY_to_aX(bY);
-	    double aZ =  bX_to_aZ(bX);
-	    
-	    //	    if ( px[nClus] >= 7*3.125 && px[nClus] < 16*3.125 )  {
-	    //    if ( hResultNhit->GetBinContent(idy+1) >=3 ) {
-	    if ( (px[nClus] >= 20 && px[nClus] < 90) )   {
-	      ax_by->Fill( aX, px[nClus]);
-	      axResTot->Fill ( px[nClus] - aX );
-	      axRes[iy]->Fill ( px[nClus] - aX );
-	      // htemp_iy->Fill (iy);
-	      // double bY_to_aX ( double bY);
-	      // double bX_to_aZ ( double bX);
-	      // double bZ_to_aY ( double bZ);
-	      //	    cout << "ptime[nClus] = " << ptime[nClus] << endl;
-	      //	    cout << "az = " << aZ << endl;
-	      htime_z->Fill ( ptime[nClus], aZ);
+	if (add_BDC_Info) {
+	  if (index_attpc_to_bdc[iev] == -1)
+	    cout << " BDC not triggered" << endl;
+	  else {
+	    //	  if (trckNumX==1) {
+	    if ( (trckNumY==1) && (trckNumX==1)) {
+	      // The aY position is  py[nClus]
+	      
+	      double bZ = aY_to_bZ(py[nClus]);
+	      
+	      //      bdc_z = Ygrad[0] * bdc_y + Yc[0] ;
+	      //        // z = Ygrad[ix] *y + Yc ;
+	      double bY = (bZ - Yc[0])/Ygrad[0];
+	      double bX = (bZ - Xc[0])/Xgrad[0];
+	      double aX = bY_to_aX(bY);
+	      double aZ =  bX_to_aZ(bX);
+	      
+	      //	    if ( px[nClus] >= 7*3.125 && px[nClus] < 16*3.125 )  {
+	      //    if ( hResultNhit->GetBinContent(idy+1) >=3 ) {
+	      if ( (px[nClus] >= 20 && px[nClus] < 90) )   {
+		ax_by->Fill( aX, px[nClus]);
+		axResTot->Fill ( px[nClus] - aX );
+		axRes[iy]->Fill ( px[nClus] - aX );
+		htime_z->Fill ( ptime[nClus], aZ);
+	      }
 	    }
 	    
-	    
 	  }
-	  
-	}	
+	} //if (add_BDC_Info)	
 	
 	nClus++; 	
       }
     }
-    
     
     
     if ( nClus <3 )
@@ -398,68 +385,66 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
     
     fLinTime->SetParameters(4,0);
     gResultTimeYX->Fit(fLinTime, "M R Q");
-    
+   
     // angle :
     //if ( (trckNumY==1) && (trckNumX==1)) {
-    if (trckNumY==1) {
-      hSlopeAXY->Fill(fLinYX->GetParameter(1));
-      hSlopeAZY->Fill ( fLinTime->GetParameter(1)*vDrift );
-      hSlopeBYZ->Fill( -Zgrad_X[0]);
-      hSlopeBXZ->Fill( Zgrad_Y[0]);
-      
-      adxdy_bdydz->Fill( fLinYX->GetParameter(1),  -Zgrad_X[0]);
-      angularRes_adxdy_bdydz->Fill ( fLinYX->GetParameter(1) + Zgrad_X[0]);
-    }
-    if ( isDebugMode) {
-      TCanvas* cvs1 = new TCanvas("cvs1", "", 800, 800);  
-      cvs1->Divide(2,2);
-      cvs1->cd(2);
-      hTime->Draw("colz");
-      cvs1->cd(1);
-      hAdc->Draw("colz");
-      gResultXY->SetMarkerSize(1);
-      gResultXY->SetMarkerColor(kWhite);
-      gResultXY->Draw("same p");
-      //                aY = - 410.25 +  Ygrad[0] * (aX + 48.5625)  + Yc[0]
-      TF1 *f1 = new TF1("f1","-410.25 + [0]*(x + 48.5625)  + [1]",0,100);
+    if (add_BDC_Info) {
       if (trckNumY==1) {
-	f1->SetParameter(0,  Ygrad[0]);
-	f1->SetParameter(1,  Yc[0]);
-	f1->SetLineColor(4);
-	f1->SetLineWidth(4);
-	f1->Draw("same");
+	hSlopeAXY->Fill(fLinYX->GetParameter(1));
+	hSlopeAZY->Fill ( fLinTime->GetParameter(1)*vDrift );
+	hSlopeBYZ->Fill( -Zgrad_X[0]);
+	hSlopeBXZ->Fill( Zgrad_Y[0]);
+	
+	adxdy_bdydz->Fill( fLinYX->GetParameter(1),  -Zgrad_X[0]);
+	angularRes_adxdy_bdydz->Fill ( fLinYX->GetParameter(1) + Zgrad_X[0]);
       }
-      
-      cvs1->cd(3);
-      //      hResultX->SetAxisRange(0,32,"Y");
-      //      hResultX->Draw("e");
-      htemp->Reset();
-      htemp->SetXTitle("y(mm)");
-      htemp->SetYTitle("Charge");
-      htemp->SetAxisRange(0,100,"Y");
-      htemp->DrawCopy();
-      gResultYX->Draw("same p");
-      cvs1->cd(4);
-      htemp->Reset();
-      htemp->SetYTitle("Time");
-      htemp->SetAxisRange(0,10,"Y");
-      htemp->DrawCopy();
-      gResultTimeYX->Draw("same p");
-
-      cvs1->SaveAs(Form("tracking/v6/figure1_%05d_run%d_BDCevent%d.png",evtId,runNumber,(int)Event));
-      delete f1;
+      if ( isDebugMode) {
+	TCanvas* cvs1 = new TCanvas("cvs1", "", 800, 800);  
+	cvs1->Divide(2,2);
+	cvs1->cd(2);
+	hTime->Draw("colz");
+	cvs1->cd(1);
+	hAdc->Draw("colz");
+	gResultXY->SetMarkerSize(1);
+	gResultXY->SetMarkerColor(kWhite);
+	gResultXY->Draw("same p");
+	//                aY = - 410.25 +  Ygrad[0] * (aX + 48.5625)  + Yc[0]
+	TF1 *f1 = new TF1("f1","-410.25 + [0]*(x + 48.5625)  + [1]",0,100);
+	if (trckNumY==1) {
+	  f1->SetParameter(0,  Ygrad[0]);
+	  f1->SetParameter(1,  Yc[0]);
+	  f1->SetLineColor(4);
+	  f1->SetLineWidth(4);
+	  f1->Draw("same");
+	}
+	
+	cvs1->cd(3);
+	//      hResultX->SetAxisRange(0,32,"Y");
+	//      hResultX->Draw("e");
+	htemp->Reset();
+	htemp->SetXTitle("y(mm)");
+	htemp->SetYTitle("Charge");
+	htemp->SetAxisRange(0,100,"Y");
+	htemp->DrawCopy();
+	gResultYX->Draw("same p");
+	cvs1->cd(4);
+	htemp->Reset();
+	htemp->SetYTitle("Time");
+	htemp->SetAxisRange(0,10,"Y");
+	htemp->DrawCopy();
+	gResultTimeYX->Draw("same p");
+	
+	cvs1->SaveAs(Form("tracking/v6/figure1_%05d_run%d_BDCevent%d.png",evtId,runNumber,(int)Event));
+	delete f1;
+      }
     }
-
   }
   
-  if ( isDebugMode ) {
+  if ( isDebugMode && add_BDC_Info) {
     TCanvas* cvs2 = new TCanvas("cvs22", "", 500, 500);
     timediff->Draw();
   }
-
-  TCanvas* cvs20 = new TCanvas("cvs20","",700,500);
-  htemp_iy->Draw();
-
+  
   
   TCanvas* cvs3 = new TCanvas("cvs3", "", 800, 800);
   cvs3->Divide(2,2);
@@ -477,7 +462,7 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
   l1->SetLineColor(1);
   l1->SetLineStyle(1);
   l1->Draw();
-
+  
   cvs3->cd(3);
   hSlopeBYZ->Fit("gaus");
   hSlopeBYZ->SetStats(1);
@@ -486,8 +471,8 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
   hSlopeBXZ->Fit("gaus");
   hSlopeBXZ->SetStats(1);
   hSlopeBXZ->Draw();
-
-
+  
+  
   /*  TCanvas* cvs4 = new TCanvas("cvs4","",800,400);
   cvs4->Divide(2,1);
   cvs4->cd(1);
@@ -508,13 +493,13 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
   l3->Draw(); 
   */
   TCanvas* cvs45 = new TCanvas("cvs45","",1200,600);
-  cvs45->Divide(4,2);
-  for ( int iy = 0 ; iy<8 ; iy++) {
-    cvs45->cd(iy+1);
-    axRes[iy]->Draw();
-    //    axRes[iy]->Fit("gaus");
-    //    TF1 *gausFit = (TF1*) axRes[iy]->GetFunction("gaus");
-    //  float gausMean = gausFit->GetParameter(1);
+  if (add_BDC_Info) { cvs45->Divide(4,2);
+    for ( int iy = 0 ; iy<8 ; iy++) {
+      cvs45->cd(iy+1);
+      axRes[iy]->Draw();
+      //    axRes[iy]->Fit("gaus");
+      //    TF1 *gausFit = (TF1*) axRes[iy]->GetFunction("gaus");
+      //  float gausMean = gausFit->GetParameter(1);
     //    float gausMeanErr = gausFit->GetParError(1);
     //    float gausSig = gausFit->GetParameter(2);
     //    float gausSigErr = gausFit->GetParError(2);
@@ -532,46 +517,50 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
     l31->SetLineStyle(1);
     l31->Draw(); */
   }
-
+  }
   
   TCanvas* cvs46 = new TCanvas("cvs46","",500,500);
-  hxShift_y->SetMarkerColor(1);
-  hxShift_y->SetLineColor(1);
-  hxRes_y->SetMarkerColor(2);
-  hxRes_y->SetLineColor(2);
-
-  hxShift_y->Draw();
-  hxRes_y->Draw("same");
   TLegend *l31 = new TLegend(0.2179929,0.2869624,0.879292,0.5455645,NULL,"brNDC");
-  l31->SetHeader("t_{ATTPC} - t_{BDC}");
-  l31->AddEntry("hxShift_y","mean","pe");
-  l31->AddEntry("hxRes_y","resolution","pe");
-  l31->SetBorderSize(0);
-  l31->SetLineColor(1);
-  //  l31->SetLineStyle(1);
-  l31->Draw();
   
-  TCanvas* cvs5 = new TCanvas("cvs5","",800,400);
-  cvs5->Divide(2,1);
-  cvs5->cd(1);
-  htime_z->Draw("colz");
-  cvs5->cd(2);
-  TH1D *htimeProf = (TProfile*)htime_z->ProfileX()->ProjectionX();
-  htimeProf->Draw();
-  htimeProf->Fit("pol1","M","",1,3);
-  TF1 *thePol1Fit = (TF1*) htimeProf->GetFunction("pol1");
-  float zeroPoint = thePol1Fit->GetParameter(0);
-  float drftVel = thePol1Fit->GetParameter(1);
+  if (add_BDC_Info) {
+    hxShift_y->SetMarkerColor(1);
+    hxShift_y->SetLineColor(1);
+    hxRes_y->SetMarkerColor(2);
+    hxRes_y->SetLineColor(2);
+    
+    hxShift_y->Draw();
+    hxRes_y->Draw("same");
+    l31->SetHeader("t_{ATTPC} - t_{BDC}");
+    l31->AddEntry("hxShift_y","mean","pe");
+    l31->AddEntry("hxRes_y","resolution","pe");
+    l31->SetBorderSize(0);
+    l31->SetLineColor(1);
+    //  l31->SetLineStyle(1);
+    l31->Draw();
+  }
   
-  TLegend *l2 = new TLegend(0.2179929,0.2869624,0.879292,0.5455645,NULL,"brNDC");
-  l2->SetHeader("Fit result");
-  l2->AddEntry("",Form("v_{drift} = %.1f cm/#mus", drftVel*0.1),"");
-  l2->AddEntry("",Form("Time_{z=0} = %.1f #mus", zeroPoint*0.1),"");
-  l2->SetBorderSize(0);
-  l2->SetLineColor(1);
-  l2->SetLineStyle(1);
-  l2->Draw();
-  
+  if (add_BDC_Info) {
+    TCanvas* cvs5 = new TCanvas("cvs5","",800,400);
+    cvs5->Divide(2,1);
+    cvs5->cd(1);
+    htime_z->Draw("colz");
+    cvs5->cd(2);
+    htimeProf = (TProfile*)htime_z->ProfileX()->ProjectionX();
+    htimeProf->Draw();
+    htimeProf->Fit("pol1","M","",1,3);
+    
+    TF1 *thePol1Fit = (TF1*) htimeProf->GetFunction("pol1");
+    float zeroPoint = thePol1Fit->GetParameter(0);
+    float drftVel = thePol1Fit->GetParameter(1);
+    
+    TLegend *l2 = new TLegend(0.2179929,0.2869624,0.879292,0.5455645,NULL,"brNDC");
+    l2->SetHeader("Fit result");
+    l2->AddEntry("",Form("v_{drift} = %.1f cm/#mus", drftVel*0.1),"");
+    l2->AddEntry("",Form("Time_{z=0} = %.1f #mus", zeroPoint*0.1),"");
+    l2->SetBorderSize(0);
+    l2->SetLineColor(1);
+    l2->SetLineStyle(1);
+    l2->Draw();
 
   TCanvas* cvsTime = new TCanvas("cvstime","",800,400);
   cvsTime->Divide(2,1);
@@ -582,17 +571,19 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
   hATTPCTime->Draw("same p");
   cvsTime->cd(2);
   hTimeDiff->Draw();
+  }
 
+  
   TFile* fout = new TFile(Form("treeFiles/v6_histograms/trackHistograms_minNhit3_run%d.root",runNumber),"recreate");
   hNhitPerCluster->Write();
-  hSlopeAXY->Write();
-  hSlopeAZY->Write();
-  hSlopeBYZ->Write();
-  hSlopeBXZ->Write();
-  ax_by->Write();
-  adxdy_bdydz->Write();
-  angularRes_adxdy_bdydz->Write();
-  axResTot->Write();
+  if (add_BDC_Info) {  hSlopeAXY->Write();
+    hSlopeAZY->Write();
+    hSlopeBYZ->Write();
+    hSlopeBXZ->Write();
+    ax_by->Write();
+    adxdy_bdydz->Write();
+    angularRes_adxdy_bdydz->Write();
+    axResTot->Write();
   for ( int iy = 0 ; iy<8 ; iy++) {
     axRes[iy]->Write();
   }
@@ -600,6 +591,7 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
   hxRes_y->Write();
   htime_z->Write();
   htimeProf->Write();
+  }
 
   fout->Close();
 

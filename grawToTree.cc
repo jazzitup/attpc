@@ -56,12 +56,16 @@ void grawToTree(int runId = 1) {
     bool isSpark;
     double eventTime, diffTime;  // (10 ns unit)
     int nHits;
+    int runNumber = runId;
     double xTree[256];
     double yTree[256];
     int xIdTree[256];
     int yIdTree[256];
+    int agetIdTree[256];
+    int chanIdTree[256];
     double timeTree[256];
     double adcTree[256];
+    treeOut->Branch("run", &runNumber, "run/I");
     treeOut->Branch("eventId", &eventId, "eventId/I");
     treeOut->Branch("isSpark", &isSpark, "isSpark/O");
     treeOut->Branch("eventTime", &eventTime, "eventTime/D");
@@ -71,6 +75,8 @@ void grawToTree(int runId = 1) {
     treeOut->Branch("y", yTree, "y[nHits]/D");
     treeOut->Branch("xId", xIdTree, "xId[nHits]/I");
     treeOut->Branch("yId", yIdTree, "yId[nHits]/I");
+    treeOut->Branch("agetId", agetIdTree, "agetId[nHits]/I");
+    treeOut->Branch("chanId", chanIdTree, "chanId[nHits]/I");
     treeOut->Branch("time", timeTree, "time[nHits]/D");
     treeOut->Branch("adc", adcTree, "adc[nHits]/D");
     //
@@ -144,6 +150,8 @@ void grawToTree(int runId = 1) {
 		      c1->Update();
 		      c1->SaveAs(Form("./signal/event_run%02d_%05d_%d_%d.png", runId, eventId, agetId, chanId));
 		    }
+		    agetIdTree[nHits] = agetId;
+		    chanIdTree[nHits] = chanId;
                     xIdTree[nHits] = pad.GetXId(agetId, chanId);
                     yIdTree[nHits] = pad.GetYId(agetId, chanId);
                     xTree[nHits] = pad.GetX(agetId, chanId);

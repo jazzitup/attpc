@@ -1,5 +1,5 @@
-#for (( j=1 ; j<=1 ; j++))
-for (( j=9 ; j<=9 ; j++))
+for (( j=1 ; j<=9 ; j++))
+#for (( j=9 ; j<=9 ; j++))
 do
 root -l -b <<-EOF
 .L GETAnalyzer.cc
