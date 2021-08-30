@@ -265,9 +265,10 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
   
   
   
-
+  
   TH2D* ax_by = new TH2D("ax_by",";x_{ATTPC coor.} (mm) ;y_{BDC coor.} (mm)",200,0,100,200,0,100);
   TH2D* adxdy_bdydz = new TH2D("adxdy_bdydz",";dx/dy_{ATTPC coor.} ; -dy/dz_{BDC coor.}",120,-1,1,120,-1,1);
+  TH1D* angularRes_adxdy_bdydz = new TH1D("angularREs_adxdy_bdydz",";dx/dy_{ATTPC coor.} - [-dy/dz_{BDC coor.}]",100,-.1,.1);
   TH1D* axResTot = new TH1D("axResTot","; x_{AT-TPC} - x_{BDC} (mm)",200,-20,20);
   TH1D* axRes[10];
   for ( int idy = 0 ; idy<8 ; idy++) {
@@ -278,13 +279,13 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
   
   TH2D* htime_z = new TH2D("htime_z",";TPC hit time (#mus); z (mm) from BDC ref.  ",50,0,7,50,20,160);
   TH1D* htemp_iy = new TH1D("htemp_iy","",100,-10,10);
-
+  
   TH1D* hNhitPerCluster = new TH1D("hNhitPerCluster",";N^{hit} per clusters",6,-.5,5.5);
   
   
   
   int nEvents = t->GetEntries();
-
+  
   //  for ( int iev = 450 ; iev <nEvents ; iev++) {
   int attpcCounter=0;
   int bdcCounter=0;
@@ -328,7 +329,7 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
     float ptime[8];
     int nClus=0;
     //    for ( int iy=0 ; iy<8 ; iy++) {
-    for ( int iy=1 ; iy<7 ; iy++) {
+    for ( int iy=2 ; iy<6 ; iy++) {
       //      if ( hResultX->GetBinContent(iy+1) > 0 ) {
       if ( hResultNhit->GetBinContent(iy+1) >= 3 ) { // at least three hits
 	px[nClus] = hResultX->GetBinContent(iy+1) * 3.125; 
@@ -377,7 +378,7 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
     
     
     
-    if ( nClus <4 )
+    if ( nClus <3 )
       continue;   // We don't need to fit this!!
     
     attpcCounter++;
@@ -399,14 +400,15 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
     gResultTimeYX->Fit(fLinTime, "M R Q");
     
     // angle :
-    if ( (trckNumY==1) && (trckNumX==1)) {
-    //    if (trckNumY==1) {
+    //if ( (trckNumY==1) && (trckNumX==1)) {
+    if (trckNumY==1) {
       hSlopeAXY->Fill(fLinYX->GetParameter(1));
       hSlopeAZY->Fill ( fLinTime->GetParameter(1)*vDrift );
       hSlopeBYZ->Fill( -Zgrad_X[0]);
       hSlopeBXZ->Fill( Zgrad_Y[0]);
       
       adxdy_bdydz->Fill( fLinYX->GetParameter(1),  -Zgrad_X[0]);
+      angularRes_adxdy_bdydz->Fill ( fLinYX->GetParameter(1) + Zgrad_X[0]);
     }
     if ( isDebugMode) {
       TCanvas* cvs1 = new TCanvas("cvs1", "", 800, 800);  
@@ -589,6 +591,7 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
   hSlopeBXZ->Write();
   ax_by->Write();
   adxdy_bdydz->Write();
+  angularRes_adxdy_bdydz->Write();
   axResTot->Write();
   for ( int iy = 0 ; iy<8 ; iy++) {
     axRes[iy]->Write();

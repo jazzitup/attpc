@@ -71,7 +71,7 @@ void analyzeHistograms() {
   TH1D* haxResTot = (TH1D*)f->Get("axResTot");
 
   TH1D* haxRes[10];
-  for ( int yid=0 ; yid<8 ; yid++)
+  for ( int yid=2 ; yid<6 ; yid++)
     haxRes[yid] = (TH1D*)f->Get(Form("axRes_%d",yid));
 
   TH2D* htime_z = (TH2D*)f->Get("htime_z");
@@ -134,11 +134,12 @@ void analyzeHistograms() {
   haxResTot->Fit("gaus");
   haxResTot->Draw();
 
+
   TH1F* hxRes_vs_yid = new TH1F("hxRes_vs_yid",";ATTPC y index;#Delta (x_{ATTPC} - x_{BDC}) (mm)",8,-.5,7.5);
   TH1F* hxShift_vs_yid = (TH1F*)hxRes_vs_yid->Clone("hxShift_vs_yid");
   TCanvas* cvs3 = new TCanvas("cvs2","",800,400);
   cvs3->Divide(4,2);
-  for ( int yid=0 ; yid<8 ; yid++) {
+  for ( int yid=2 ; yid<6 ; yid++) {
     cvs3->cd(yid+1);
     haxRes[yid]->Rebin(4);
     haxRes[yid]->SetAxisRange(-10,10,"X");
@@ -154,7 +155,7 @@ void analyzeHistograms() {
     hxRes_vs_yid->SetBinContent(yid+1, gausSig);
     hxRes_vs_yid->SetBinError(yid+1, gausSigErr);
   }
-
+  
   TCanvas* cvs4 = new TCanvas("cvs4","",500,500);
   handsomeTH1(hxShift_vs_yid,1);
   handsomeTH1(hxRes_vs_yid,2);
@@ -170,7 +171,9 @@ void analyzeHistograms() {
   TCanvas* cvs5 = new TCanvas("cvs5","",500,500);
   htime_z->Draw("colz");
 
-   TCanvas* cvs6 = new TCanvas("cvs6","",900,900);
+
+
+  TCanvas* cvs6 = new TCanvas("cvs6","",900,900);
   cvs6->Divide(3,3);
   for ( int irun = 1 ; irun<=9 ; irun++) {
     if (irun == 4 ) continue;
