@@ -34,7 +34,7 @@ double fitFcn(double *x, double *par) {
 void grawToTree(int runId = 1) {
   
     bool isDebugMode = 0 ;   // Save the performance plots
-    TFile *fout = new TFile(Form("treeOfHits_run%d_v6_2021Aug24.root", runId), "recreate");
+    TFile *fout = new TFile(Form("treeOfHits_run%d_v6_2021Aug30.root", runId), "recreate");
     GETDecoder decoder;
     if ( runId == 0 ) { // test run
       decoder.OpenFromList("fileList/files_muon_run1.txt");
