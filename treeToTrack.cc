@@ -18,14 +18,16 @@
 #include "TStyle.h"
 #include "TSystem.h"
 #include "TTree.h"
+//#include "GETAnalyzer.h"
+#include "PadMap.h"
 
 void doCluster( TH2F* hAdc, TH2F* hTime, float seedThr, TH1F* timediff, TH1F* hResultX, TH1F* hResultTime, TH1F* hResultNhit, bool useGaus=false);
 bool isNearDeadPad( int idx, int idy);
 
 //float bdcTime_to_Sec ( int bdcTime); 
 
-//bool isDebugMode = false ;
-bool isDebugMode = true ;
+bool isDebugMode = false ;
+//bool isDebugMode = true ;
 bool isUsingGaus = false;
 
 float dtCut = 0.25;
@@ -41,15 +43,19 @@ double aX_to_bY ( double bY);
 double aZ_to_bX ( double bX);
 double aY_to_bZ ( double bZ);
 
-
-
+PadMap pMap;
+//GETAnalyzer analyzer;
 
 void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to be analyzed.  If -1, we analyze everything
   
   
   float seedThr = 50;  
-  float  vDrift = 46 ; // in mm/microsecond  <= This must be updated! 
-  TString fname = Form("./treeFiles/v6/treeOfHits_run%d_v6_2021Aug24.root",runNumber);
+  float vDrift = 46 ; // in mm/microsecond  <= This must be updated! 
+  float scTopY = 407.75;
+  float scBottomY = -222.25;
+
+
+  TString fname = Form("./treeFiles/v7/treeOfHits_run%d_v7_2021Aug30.root",runNumber);
   TFile* fileIn = new TFile(fname);
   //  TFile* fileIn = new TFile("./treeOfHits_muon_run1.root");
 
@@ -62,12 +68,15 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
    Double_t        evtTime;
    Double_t        diffTime;
    Int_t           nhits;
-   Double_t        xTree[65];   //[nhits]
-   Double_t        yTree[65];   //[nhits]
-   Int_t           xId[65];   //[nhits]
-   Int_t           yId[65];   //[nhits]
-   Double_t        timeTree[65];   //[nhits]
-   Double_t        adcTree[65];   //[nhits]
+   Int_t           run;  //[nhits]
+   Double_t        xTree[256];   //[nhits]
+   Double_t        yTree[256];   //[nhits]
+   Int_t           xId[256];   //[nhits]
+   Int_t           yId[256];   //[nhits]
+   Int_t           agetId[256];   //[nhits]
+   Int_t           chanId[256];   //[nhits]
+   Double_t        timeTree[256];   //[nhits]
+   Double_t        adcTree[256];   //[nhits]
 
    // List of branches
    TBranch        *b_evtId;   //!
@@ -75,6 +84,7 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
    TBranch        *b_evtTime;   //!
    TBranch        *b_diffTime;   //!
    TBranch        *b_nhits;   //!
+   TBranch        *b_run;   //!
    TBranch        *b_xTree;   //!
    TBranch        *b_yTree;   //!
    TBranch        *b_xId;   //!
@@ -98,6 +108,7 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
    t->SetBranchAddress("eventTime", &evtTime, &b_evtTime);
    t->SetBranchAddress("diffTime", &diffTime, &b_diffTime);
    t->SetBranchAddress("nHits", &nhits, &b_nhits);
+   t->SetBranchAddress("run", &run, &b_run);
    t->SetBranchAddress("x", xTree, &b_xTree);
    t->SetBranchAddress("y", yTree, &b_yTree);
    t->SetBranchAddress("xId", xId, &b_xId);
@@ -191,6 +202,10 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
    
    TH2F* htemp = new TH2F("htemp",";Y (mm); x (mm)",100,0,100, 100,0,100);
    TH1F* hNhits = new TH1F("hNhits",";# of hits;",200,.5,199.5);
+
+   TH1F* hScTopX = new TH1F("hScTopX",";SC top x (mm);",200,-200,200); 
+   TH1F* hScBottomX = (TH1F*)hScTopX->Clone("hScBottomX");
+
    
    TH2F* hAdc = new TH2F("hAdc",";x (mm);y (mm);ADC",   32, -.5*3.125, 31.5*3.125,   8, -.5*12.5, 7.5*12.5);
    TH2F* hTime = new TH2F("hTime",";x (mm);y (mm);Time",32, -.5*3.125, 31.5*3.125,   8, -.5*12.5, 7.5*12.5);
@@ -288,11 +303,14 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
   for ( int iev = 0 ; iev <nEvents ; iev++) {
     t->GetEntry(iev);
     hNhits->Fill(nhits);
-    tBdc->GetEntry(index_attpc_to_bdc[iev]);
+    if (add_BDC_Info)
+      tBdc->GetEntry(index_attpc_to_bdc[iev]);
+    
+    if (isSpark)
+      continue;
     
     double attpc_time = evtTime - ATTPC_evt0_time ; 
     //    cout << " AT-TPC event time = " << attpc_time << endl; 
-
     
     hTimeGrid->Reset();
     hAdcGrid->Reset();
@@ -300,15 +318,10 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
     hAdc->Reset();
     for ( int ihit = 0 ; ihit <nhits ; ihit++)  {
       if ( timeTree[ihit] < 0 ) continue;
-      
-      
       hAdc->    SetBinContent(  xId[ihit]+1, yId[ihit]+1, adcTree[ihit] ) ; // micro seconds
       hAdcGrid->SetBinContent( xId[ihit]+1, yId[ihit]+1,     adcTree[ihit] ) ; // micro seconds
-      
       hTime->    SetBinContent(  xId[ihit]+1, yId[ihit]+1, timeTree[ihit] * bucketInMicSec) ; // micro seconds
       hTimeGrid->SetBinContent(  xId[ihit]+1, yId[ihit]+1,     timeTree[ihit] * bucketInMicSec) ; // micro seconds 
-      
-      
       
     }
     
@@ -385,60 +398,70 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
     
     fLinTime->SetParameters(4,0);
     gResultTimeYX->Fit(fLinTime, "M R Q");
-   
+
+    float theX0   = fLinYX->GetParameter(0);
+    float theDxdy = fLinYX->GetParameter(1);
+    float scTopX = theX0 + scTopY*theDxdy;
+    float scBottomX = theX0 + scBottomY*theDxdy;
+
+    hScTopX->Fill (scTopX);
+    hScBottomX->Fill (scBottomX);
+
     // angle :
     //if ( (trckNumY==1) && (trckNumX==1)) {
+    hSlopeAXY->Fill(fLinYX->GetParameter(1));
+    hSlopeAZY->Fill ( fLinTime->GetParameter(1)*vDrift );
+    
     if (add_BDC_Info) {
       if (trckNumY==1) {
-	hSlopeAXY->Fill(fLinYX->GetParameter(1));
-	hSlopeAZY->Fill ( fLinTime->GetParameter(1)*vDrift );
 	hSlopeBYZ->Fill( -Zgrad_X[0]);
 	hSlopeBXZ->Fill( Zgrad_Y[0]);
-	
 	adxdy_bdydz->Fill( fLinYX->GetParameter(1),  -Zgrad_X[0]);
 	angularRes_adxdy_bdydz->Fill ( fLinYX->GetParameter(1) + Zgrad_X[0]);
       }
-      if ( isDebugMode) {
-	TCanvas* cvs1 = new TCanvas("cvs1", "", 800, 800);  
-	cvs1->Divide(2,2);
-	cvs1->cd(2);
-	hTime->Draw("colz");
-	cvs1->cd(1);
-	hAdc->Draw("colz");
-	gResultXY->SetMarkerSize(1);
-	gResultXY->SetMarkerColor(kWhite);
-	gResultXY->Draw("same p");
-	//                aY = - 410.25 +  Ygrad[0] * (aX + 48.5625)  + Yc[0]
-	TF1 *f1 = new TF1("f1","-410.25 + [0]*(x + 48.5625)  + [1]",0,100);
-	if (trckNumY==1) {
-	  f1->SetParameter(0,  Ygrad[0]);
-	  f1->SetParameter(1,  Yc[0]);
-	  f1->SetLineColor(4);
-	  f1->SetLineWidth(4);
-	  f1->Draw("same");
-	}
-	
-	cvs1->cd(3);
-	//      hResultX->SetAxisRange(0,32,"Y");
-	//      hResultX->Draw("e");
-	htemp->Reset();
-	htemp->SetXTitle("y(mm)");
-	htemp->SetYTitle("Charge");
-	htemp->SetAxisRange(0,100,"Y");
-	htemp->DrawCopy();
-	gResultYX->Draw("same p");
-	cvs1->cd(4);
-	htemp->Reset();
-	htemp->SetYTitle("Time");
-	htemp->SetAxisRange(0,10,"Y");
-	htemp->DrawCopy();
-	gResultTimeYX->Draw("same p");
-	
-	cvs1->SaveAs(Form("tracking/v6/figure1_%05d_run%d_BDCevent%d.png",evtId,runNumber,(int)Event));
-	delete f1;
+    }
+    
+    if ( isDebugMode) {
+      TCanvas* cvs1 = new TCanvas("cvs1", "", 800, 800);  
+      cvs1->Divide(2,2);
+      cvs1->cd(2);
+      hTime->Draw("colz");
+      cvs1->cd(1);
+      hAdc->Draw("colz");
+      gResultXY->SetMarkerSize(1);
+      gResultXY->SetMarkerColor(kWhite);
+      gResultXY->Draw("same p");
+      //                aY = - 410.25 +  Ygrad[0] * (aX + 48.5625)  + Yc[0]
+      TF1 *f1 = new TF1("f1","-410.25 + [0]*(x + 48.5625)  + [1]",0,100);
+      if ( add_BDC_Info && (trckNumY==1)) {
+	f1->SetParameter(0,  Ygrad[0]);
+	f1->SetParameter(1,  Yc[0]);
+	f1->SetLineColor(4);
+	f1->SetLineWidth(4);
+	f1->Draw("same");
       }
+      
+      cvs1->cd(3);
+      //      hResultX->SetAxisRange(0,32,"Y");
+      //      hResultX->Draw("e");
+      htemp->Reset();
+      htemp->SetXTitle("y (mm)");
+      htemp->SetYTitle("x (mm)");
+      htemp->SetAxisRange(0,100,"Y");
+      htemp->DrawCopy();
+      gResultYX->Draw("same p");
+      cvs1->cd(4);
+      htemp->Reset();
+      htemp->SetYTitle("Time");
+      htemp->SetAxisRange(0,10,"Y");
+      htemp->DrawCopy();
+      gResultTimeYX->Draw("same p");
+      
+      cvs1->SaveAs(Form("tracking/v7/figure1_%05d_run%d_BDCevent%d.png",evtId,runNumber,(int)Event));
+      delete f1;
     }
   }
+  
   
   if ( isDebugMode && add_BDC_Info) {
     TCanvas* cvs2 = new TCanvas("cvs22", "", 500, 500);
@@ -574,25 +597,31 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
   }
 
   
-  TFile* fout = new TFile(Form("treeFiles/v6_histograms/trackHistograms_minNhit3_run%d.root",runNumber),"recreate");
+  TFile* fout = new TFile(Form("treeFiles/v7_histograms/trackHistograms_minNhit3_run%d.root",runNumber),"recreate");
   hNhitPerCluster->Write();
-  if (add_BDC_Info) {  hSlopeAXY->Write();
-    hSlopeAZY->Write();
+  hSlopeAXY->Write();
+  hSlopeAZY->Write();
+  hScTopX->Write();
+  hScBottomX->Write();
+  
+  if (add_BDC_Info) {
     hSlopeBYZ->Write();
     hSlopeBXZ->Write();
     ax_by->Write();
     adxdy_bdydz->Write();
     angularRes_adxdy_bdydz->Write();
     axResTot->Write();
-  for ( int iy = 0 ; iy<8 ; iy++) {
-    axRes[iy]->Write();
+    {
+      for ( int iy = 0 ; iy<8 ; iy++) {
+	axRes[iy]->Write();
+      }
+    }
+    hxShift_y->Write();
+    hxRes_y->Write();
+    htime_z->Write();
+    htimeProf->Write();
   }
-  hxShift_y->Write();
-  hxRes_y->Write();
-  htime_z->Write();
-  htimeProf->Write();
-  }
-
+  
   fout->Close();
 
   cout << "* Run No. " << runNumber << endl; 
@@ -689,7 +718,6 @@ void doCluster( TH2F* hAdc, TH2F* hTime, float seedThr, TH1F* timediff, TH1F* hR
 bool isNearDeadPad( int idx, int idy) {
   bool result = false; 
   //  cout << "idx, idy = " << idx << ", " << idy<<endl;
-
   if (pMap.IsDeadPad( idx, idy))
     result = true;
 
