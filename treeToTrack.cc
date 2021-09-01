@@ -241,12 +241,18 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
   TGraph* gResultTimeYX ;//  x와 y를 바꾼 것.   피팅할 때는 이것이 더 편함. 
   TF1 * fLinYX = new TF1("fLinYX", "[0]+[1]*x", 0, 100); // as a function of Y
   TF1 * fLinTime = new TF1("fLinTime", "[0]+[1]*x", 0, 100); // as a function of Y
+  TGraph* gResultForRes;
+  TF1 * fLinForRes = new TF1("fLinForRes", "[0]+[1]*x", 0, 100); // as a function of Y
   
   
   TH1F* hATTPCTime = new TH1F("hattpctime",";AT-TPC time (s);", 1000,0,100000);
   TH1F* hBDCTime = (TH1F*)hATTPCTime->Clone("hbdctime");
   TH1F* hTimeDiff = new TH1F("hattpctimediff",";t_{AT-TPC} - t_{BDC} (s);", 2000,-1,1);
 
+
+  // For resolution study 
+  TH2F* hDx_slope = new TH2F("hDxSlope",";Angle (rad); #Delta x (Cluster - fit)", 20,-1,1, 500,-100,100);
+  
   const int maxEvents = 10000;
   double atime_arr[maxEvents]; // AT-TPC time array
   double btime_arr[maxEvents]; // BDC time array
@@ -339,6 +345,8 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
     
     float px[8];
     float py[8];
+    float pxForRes[8];
+    float pyForRes[8];
     float ptime[8];
     int nClus=0;
     for ( int iy=2 ; iy<6 ; iy++) {
@@ -381,6 +389,7 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
 	nClus++; 	
       }
     }
+     
     
     
     if ( nClus <3 )
@@ -428,6 +437,33 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
     //if ( (trckNumY==1) && (trckNumX==1)) {
     hSlopeAXY->Fill(fLinYX->GetParameter(1));
     hSlopeAZY->Fill ( fLinTime->GetParameter(1)*vDrift );
+
+
+    // Resolution study :
+    if ( (nClus >=4) &&  (yxChi2 < chi2Cut)){
+
+      for ( int iClus = 0 ; iClus< nClus; iClus++) { 
+
+	int nJClus=0;
+	for ( int jClus = 0 ; jClus< nClus; jClus++) {
+	  if ( jClus != iClus) {
+	    pxForRes[nJClus] = px[jClus];
+	    pyForRes[nJClus] = py[jClus];
+	    nJClus++;
+	  }
+	}
+	// nJClus = nClus -1 
+	gResultForRes =  new TGraph(nJClus,pyForRes,pxForRes);
+	fLinForRes->SetParameters(  0 ,    0);
+	fLinForRes->SetParLimits(1,-1,1);
+	gResultForRes->Fit(fLinForRes, "M R Q");
+
+	  hDx_slope->Fill( atan(fLinForRes->GetParameter(1)), px[iClus] - fLinForRes->Eval(py[iClus]) );
+	  //	  cout << " px, py, slope, dx = " <<  px[iClus] <<", "<< py[iClus] <<", "<< atan(fLinForRes->GetParameter(1)) <<", "<<  px[iClus] - fLinForRes->Eval(py[iClus]) << endl;
+
+      }
+    }      
+    
     
     if (add_BDC_Info) {
       if (trckNumY==1) {
@@ -437,8 +473,8 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
 	angularRes_adxdy_bdydz->Fill ( fLinYX->GetParameter(1) + Zgrad_X[0]);
       }
     }
-
-
+    
+    
     
     if ( isDebugMode) {
       TCanvas* cvs1 = new TCanvas("cvs1", "", 800, 800);  
@@ -629,7 +665,7 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
   hScBottomX->Write();
   hScTopZ->Write();
   hScBottomZ->Write();
-  
+  hDx_slope->Write();
   if (add_BDC_Info) {
     hSlopeBYZ->Write();
     hSlopeBXZ->Write();
