@@ -50,11 +50,12 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
   
   
   float seedThr = 50;  
-  float vDrift = 46 ; // in mm/microsecond  <= This must be updated! 
+  //  float vDrift = 46 ; // in mm/microsecond  <= This must be updated! 
+  float vDrift = 55 ; // in mm/microsecond  <= This must be updated! 
   float scTopY = 407.75;
   float scBottomY = -222.25;
-
-
+  float chi2Cut  = 1;
+  
   TString fname = Form("./treeFiles/v7/treeOfHits_run%d_v7_2021Aug30.root",runNumber);
   TFile* fileIn = new TFile(fname);
   //  TFile* fileIn = new TFile("./treeOfHits_muon_run1.root");
@@ -231,7 +232,8 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
   TH1F* hSlopeBXZ = (TH1F*)hSlopeAXY->Clone("hSlopeBXZ");
   hSlopeBXZ->SetXTitle("dx/dz (BDC coor.)");
 
-
+  TH1F* hChi2YX = new TH1F("hChi2yx",";#Chi^2 for XY track fit;",100,0,10);
+  
   
   TGraph* gResultXY ;
   TGraph* gResultYX ;//  x와 y를 바꾼 것.   피팅할 때는 이것이 더 편함. 
@@ -395,7 +397,11 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
     //    fLinYX->SetParLimits(0,1,100);
     fLinYX->SetParLimits(1,-1,1);
     gResultYX->Fit(fLinYX, "M R Q");
-    
+
+    double yxChi2 = fLinYX->GetChisquare() ; 
+    hChi2YX->Fill(yxChi2);
+
+
     gResultTime =  new TGraph(nClus,ptime,py);
     gResultTimeYX =  new TGraph(nClus,py,ptime);
     
@@ -412,11 +418,12 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
     float scTopT = theT0 + scTopY*theDtdy;
     float scBottomT = theT0 + scBottomY*theDtdy;
         
-    hScTopX->Fill (scTopX);
-    hScBottomX->Fill (scBottomX);
-    hScTopZ->Fill (scTopT * vDrift);  // ns * mm/ns
-    hScBottomZ->Fill (scBottomT * vDrift);
-
+    if (yxChi2 < chi2Cut)  {
+      hScTopX->Fill (scTopX);
+      hScBottomX->Fill (scBottomX);
+      hScTopZ->Fill (scTopT * vDrift);  // ns * mm/ns
+      hScBottomZ->Fill (scBottomT * vDrift);
+    }
     // angle :
     //if ( (trckNumY==1) && (trckNumX==1)) {
     hSlopeAXY->Fill(fLinYX->GetParameter(1));
@@ -430,6 +437,8 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
 	angularRes_adxdy_bdydz->Fill ( fLinYX->GetParameter(1) + Zgrad_X[0]);
       }
     }
+
+
     
     if ( isDebugMode) {
       TCanvas* cvs1 = new TCanvas("cvs1", "", 800, 800);  
@@ -472,6 +481,11 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
     }
   }
   
+
+  //  if ( isDebugMode ) {
+  TCanvas* cvs0 = new TCanvas("cvs0", "", 500,500);
+  hChi2YX->Draw();
+  //  }
   
   if ( isDebugMode && add_BDC_Info) {
     TCanvas* cvs2 = new TCanvas("cvs22", "", 500, 500);
