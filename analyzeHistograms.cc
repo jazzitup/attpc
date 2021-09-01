@@ -192,7 +192,6 @@ void analyzeHistograms() {
   TH2D* htime_z_type2 = (TH2D*)htime_z_type1->Clone("htime_z_type2");
   
   for ( int irun = 1 ; irun<=9 ; irun++) {
-    if (irun == 4 ) continue;
     if (irun<=7) htime_z_type1->Add(htime_z_run[irun]);
     else  htime_z_type2->Add(htime_z_run[irun]);
   }

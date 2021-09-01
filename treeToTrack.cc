@@ -203,8 +203,11 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
    TH2F* htemp = new TH2F("htemp",";Y (mm); x (mm)",100,0,100, 100,0,100);
    TH1F* hNhits = new TH1F("hNhits",";# of hits;",200,.5,199.5);
 
-   TH1F* hScTopX = new TH1F("hScTopX",";SC top x (mm);",200,-200,200); 
+   TH1F* hScTopX = new TH1F("hScTopX",";SC top x (mm);",800,-200,200); 
    TH1F* hScBottomX = (TH1F*)hScTopX->Clone("hScBottomX");
+
+   TH1F* hScTopZ = new TH1F("hScTopZ",";SC top z (mm);",800,00,400); 
+   TH1F* hScBottomZ = (TH1F*)hScTopZ->Clone("hScBottomZ");
 
    
    TH2F* hAdc = new TH2F("hAdc",";x (mm);y (mm);ADC",   32, -.5*3.125, 31.5*3.125,   8, -.5*12.5, 7.5*12.5);
@@ -404,8 +407,15 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
     float scTopX = theX0 + scTopY*theDxdy;
     float scBottomX = theX0 + scBottomY*theDxdy;
 
+    float theT0 = fLinTime->GetParameter(0);
+    float theDtdy = fLinTime->GetParameter(1);
+    float scTopT = theT0 + scTopY*theDtdy;
+    float scBottomT = theT0 + scBottomY*theDtdy;
+        
     hScTopX->Fill (scTopX);
     hScBottomX->Fill (scBottomX);
+    hScTopZ->Fill (scTopT * vDrift);  // ns * mm/ns
+    hScBottomZ->Fill (scBottomT * vDrift);
 
     // angle :
     //if ( (trckNumY==1) && (trckNumX==1)) {
@@ -603,6 +613,8 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
   hSlopeAZY->Write();
   hScTopX->Write();
   hScBottomX->Write();
+  hScTopZ->Write();
+  hScBottomZ->Write();
   
   if (add_BDC_Info) {
     hSlopeBYZ->Write();
