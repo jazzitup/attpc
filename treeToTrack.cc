@@ -51,7 +51,7 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
   
   float seedThr = 50;  
   //  float vDrift = 46 ; // in mm/microsecond  <= This must be updated! 
-  float vDrift = 55 ; // in mm/microsecond  <= This must be updated! 
+  float vDrift = 55.45 ; // in mm/microsecond  <= This must be updated! 
   float scTopY = 407.75;
   float scBottomY = -222.25;
   float chi2Cut  = 1;
@@ -251,7 +251,7 @@ void treeToTrack( int numEvents = -1, int runNumber = 1 ) {  // # of events to b
 
 
   // For resolution study 
-  TH2F* hDx_slope = new TH2F("hDxSlope",";Angle (rad); #Delta x (Cluster - fit)", 20,-1,1, 500,-100,100);
+  TH2F* hDx_slope = new TH2F("hDxSlope",";Angle (rad); #Delta x ( = x^{cluster} - x^{fit})", 20,-.3,.3, 100,-5,5);
   
   const int maxEvents = 10000;
   double atime_arr[maxEvents]; // AT-TPC time array
